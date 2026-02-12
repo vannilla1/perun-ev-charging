@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
+// Stripe is optional - only initialize if key is provided
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
+  : null;
 
 // GET /api/payments/methods?customerId=xxx
 // Získanie platobných metód zákazníka
 export async function GET(request: NextRequest) {
   try {
+    if (!stripe) {
+      return NextResponse.json(
+        { error: 'Stripe nie je nakonfigurovaný', methods: [] },
+        { status: 200 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const customerId = searchParams.get('customerId');
 
@@ -60,6 +70,13 @@ export async function GET(request: NextRequest) {
 // Odstránenie platobnej metódy
 export async function DELETE(request: NextRequest) {
   try {
+    if (!stripe) {
+      return NextResponse.json(
+        { error: 'Stripe nie je nakonfigurovaný' },
+        { status: 503 }
+      );
+    }
+
     const body = await request.json();
     const { paymentMethodId } = body;
 
