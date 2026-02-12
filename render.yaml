@@ -4,6 +4,7 @@ services:
     runtime: node
     region: frankfurt
     plan: free
+    nodeVersion: "22"
     buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /
