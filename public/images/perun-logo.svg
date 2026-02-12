@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 450 120">
+  <!-- Kruhový symbol -->
+  <g transform="translate(55, 60)">
+    <!-- Modrý segment (pravá horná časť - väčšia) -->
+    <path d="M0,-50 A50,50 0 0,1 50,0 A50,50 0 0,1 0,50 L0,0 Z" fill="#0099D8"/>
+
+    <!-- Zelený segment (ľavý horný) -->
+    <path d="M0,-50 A50,50 0 0,0 -50,0 L0,0 Z" fill="#8DC63F"/>
+
+    <!-- Oranžový segment (ľavý dolný) -->
+    <path d="M-50,0 A50,50 0 0,0 0,50 L0,0 Z" fill="#F7941D"/>
+
+    <!-- Biely kvet/hviezda v strede - 8 lupeňov -->
+    <g fill="white">
+      <!-- Horný lupeň -->
+      <ellipse cx="0" cy="-22" rx="5" ry="18"/>
+      <!-- Pravý horný lupeň -->
+      <ellipse cx="0" cy="-22" rx="5" ry="18" transform="rotate(45)"/>
+      <!-- Pravý lupeň -->
+      <ellipse cx="0" cy="-22" rx="5" ry="18" transform="rotate(90)"/>
+      <!-- Pravý dolný lupeň -->
+      <ellipse cx="0" cy="-22" rx="5" ry="18" transform="rotate(135)"/>
+      <!-- Dolný lupeň -->
+      <ellipse cx="0" cy="-22" rx="5" ry="18" transform="rotate(180)"/>
+      <!-- Ľavý dolný lupeň -->
+      <ellipse cx="0" cy="-22" rx="5" ry="18" transform="rotate(225)"/>
+      <!-- Ľavý lupeň -->
+      <ellipse cx="0" cy="-22" rx="5" ry="18" transform="rotate(270)"/>
+      <!-- Ľavý horný lupeň -->
+      <ellipse cx="0" cy="-22" rx="5" ry="18" transform="rotate(315)"/>
+    </g>
+  </g>
+
+  <!-- Text "Perun" - modrý -->
+  <text x="120" y="75" font-family="Arial, Helvetica, sans-serif" font-size="62" font-weight="bold" fill="#0099D8">Perun</text>
+
+  <!-- Text "ELECTROMOBILITY" - oranžový -->
+  <text x="123" y="100" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="500" letter-spacing="4" fill="#F7941D">ELECTROMOBILITY</text>
+</svg>

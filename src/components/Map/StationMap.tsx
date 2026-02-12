@@ -1,0 +1,346 @@
+'use client';
+
+import React, { useEffect, useState, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import type { ChargingStation } from '@/types';
+
+// Perun brand colors
+const PERUN_COLORS = {
+  blue: '#0099D8',
+  green: '#8DC63F',
+  orange: '#F7941D',
+  gray: '#9CA3AF',
+};
+
+// Premium marker s Perun farbami
+const createCustomIcon = (status: ChargingStation['status']) => {
+  const colors = {
+    available: PERUN_COLORS.green,
+    occupied: PERUN_COLORS.orange,
+    offline: PERUN_COLORS.gray,
+    maintenance: PERUN_COLORS.gray,
+  };
+
+  const glowColors = {
+    available: 'rgba(141, 198, 63, 0.4)',
+    occupied: 'rgba(247, 148, 29, 0.4)',
+    offline: 'rgba(156, 163, 175, 0.3)',
+    maintenance: 'rgba(156, 163, 175, 0.3)',
+  };
+
+  return L.divIcon({
+    className: 'custom-marker',
+    html: `
+      <div style="
+        position: relative;
+        width: 40px;
+        height: 40px;
+      ">
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 40px;
+          height: 40px;
+          background: ${glowColors[status]};
+          border-radius: 50%;
+          animation: pulse 2s ease-in-out infinite;
+        "></div>
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 32px;
+          height: 32px;
+          background: linear-gradient(135deg, ${colors[status]} 0%, ${colors[status]}dd 100%);
+          border: 3px solid white;
+          border-radius: 50%;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white">
+            <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+      </div>
+      <style>
+        @keyframes pulse {
+          0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+          50% { opacity: 0.3; transform: translate(-50%, -50%) scale(1.2); }
+        }
+      </style>
+    `,
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -35],
+  });
+};
+
+interface LocationMarkerProps {
+  position: [number, number] | null;
+}
+
+// Komponent pre počiatočné prispôsobenie mapy podľa staníc (spustí sa iba raz)
+function FitBoundsToStations({ stations }: { stations: ChargingStation[] }) {
+  const map = useMap();
+  const hasFittedRef = useRef(false);
+
+  useEffect(() => {
+    // Spustiť iba raz pri prvom načítaní staníc
+    if (stations.length > 0 && !hasFittedRef.current) {
+      const bounds = L.latLngBounds(
+        stations.map(s => [s.latitude, s.longitude] as [number, number])
+      );
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 10 });
+      hasFittedRef.current = true;
+    }
+  }, [map, stations]);
+
+  return null;
+}
+
+function LocationMarker({ position }: LocationMarkerProps) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (position) {
+      map.flyTo(position, 14);
+    }
+  }, [map, position]);
+
+  if (!position) return null;
+
+  const userIcon = L.divIcon({
+    className: 'user-location-marker',
+    html: `
+      <div style="
+        position: relative;
+        width: 24px;
+        height: 24px;
+      ">
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 24px;
+          height: 24px;
+          background: rgba(0, 153, 216, 0.2);
+          border-radius: 50%;
+          animation: userPulse 2s ease-in-out infinite;
+        "></div>
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 16px;
+          height: 16px;
+          background: linear-gradient(135deg, ${PERUN_COLORS.blue} 0%, #0077B5 100%);
+          border: 3px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 8px rgba(0, 153, 216, 0.4);
+        "></div>
+      </div>
+      <style>
+        @keyframes userPulse {
+          0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.5); }
+        }
+      </style>
+    `,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  });
+
+  return <Marker position={position} icon={userIcon} />;
+}
+
+interface StationMapProps {
+  stations: ChargingStation[];
+  onStationClick?: (station: ChargingStation) => void;
+  center?: [number, number];
+  zoom?: number;
+  showUserLocation?: boolean;
+}
+
+export function StationMap({
+  stations,
+  onStationClick,
+  center = [48.75, 21.25],
+  zoom = 8,
+  showUserLocation = true,
+}: StationMapProps) {
+  const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+
+  useEffect(() => {
+    setMapReady(true);
+
+    if (showUserLocation && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserPosition([position.coords.latitude, position.coords.longitude]);
+        },
+        (error) => {
+          console.warn('Geolocation error:', error.message);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!mapReady) {
+    return (
+      <div className="w-full h-full bg-gradient-to-b from-[var(--surface)] to-[var(--surface-secondary)] flex items-center justify-center">
+        <div className="animate-pulse text-[var(--text-secondary)]">Načítavam mapu...</div>
+      </div>
+    );
+  }
+
+  // Premium popup content renderer
+  const renderPopupContent = (station: ChargingStation) => (
+    <div className="min-w-[260px] p-1">
+      {/* Header gradient */}
+      <div
+        className="h-1 rounded-t-lg mb-3"
+        style={{
+          background: station.status === 'available'
+            ? `linear-gradient(90deg, ${PERUN_COLORS.green}, ${PERUN_COLORS.blue})`
+            : station.status === 'offline'
+            ? PERUN_COLORS.gray
+            : `linear-gradient(90deg, ${PERUN_COLORS.orange}, ${PERUN_COLORS.blue})`
+        }}
+      />
+
+      {/* Station name & status */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1 pr-2">
+          <h3 className="font-bold text-base text-gray-800 leading-tight">{station.name}</h3>
+          <p className="text-xs text-gray-500 mt-0.5">{station.address}</p>
+        </div>
+        <span
+          className="px-2 py-1 rounded-full text-xs font-bold text-white shrink-0"
+          style={{
+            backgroundColor: station.status === 'available'
+              ? PERUN_COLORS.green
+              : station.status === 'offline'
+              ? PERUN_COLORS.gray
+              : PERUN_COLORS.orange
+          }}
+        >
+          {station.status === 'available' ? '✓ Dostupná' : station.status === 'offline' ? '✕ Nedostupná' : '⚡ Obsadená'}
+        </span>
+      </div>
+
+      {/* Connectors */}
+      <div className="space-y-2 mb-3">
+        {station.connectors.map((connector, idx) => (
+          <div
+            key={connector.id || idx}
+            className="flex items-center justify-between p-2 rounded-lg text-xs"
+            style={{
+              backgroundColor: connector.status === 'available'
+                ? 'rgba(141, 198, 63, 0.1)'
+                : connector.status === 'offline'
+                ? 'rgba(156, 163, 175, 0.1)'
+                : 'rgba(247, 148, 29, 0.1)'
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className="w-2 h-2 rounded-full"
+                style={{
+                  backgroundColor: connector.status === 'available'
+                    ? PERUN_COLORS.green
+                    : connector.status === 'offline'
+                    ? PERUN_COLORS.gray
+                    : PERUN_COLORS.orange
+                }}
+              />
+              <span className="font-medium text-gray-700">
+                {(connector as { name?: string }).name || `Konektor ${idx + 1}`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500">{connector.type}</span>
+              <span className="font-bold" style={{ color: PERUN_COLORS.blue }}>{connector.power} kW</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Price */}
+      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+        <span className="text-xs text-gray-500">Cena za kWh</span>
+        <span className="text-lg font-bold" style={{ color: PERUN_COLORS.blue }}>
+          {station.pricePerKwh.toFixed(2)} €
+        </span>
+      </div>
+    </div>
+  );
+
+  return (
+    <MapContainer
+      center={userPosition || center}
+      zoom={zoom}
+      style={{ height: '100%', width: '100%' }}
+      zoomControl={false}
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+
+      {showUserLocation && <LocationMarker position={userPosition} />}
+
+      {/* Automaticky prispôsob mapu podľa staníc */}
+      {stations.length > 0 && !userPosition && <FitBoundsToStations stations={stations} />}
+
+      {/* Najprv vykresliť nedostupné (šedé) stanice - budú pod ostatnými */}
+      {stations
+        .filter(station => station.status === 'offline' || station.status === 'maintenance')
+        .map((station) => (
+          <Marker
+            key={station.id}
+            position={[station.latitude, station.longitude]}
+            icon={createCustomIcon(station.status)}
+            zIndexOffset={-1000}
+            eventHandlers={{
+              click: () => onStationClick?.(station),
+            }}
+          >
+            <Popup>
+              {renderPopupContent(station)}
+            </Popup>
+          </Marker>
+        ))}
+
+      {/* Potom vykresliť dostupné (zelené) a obsadené (oranžové) stanice - budú navrchu */}
+      {stations
+        .filter(station => station.status === 'available' || station.status === 'occupied')
+        .map((station) => (
+          <Marker
+            key={station.id}
+            position={[station.latitude, station.longitude]}
+            icon={createCustomIcon(station.status)}
+            zIndexOffset={1000}
+            eventHandlers={{
+              click: () => onStationClick?.(station),
+            }}
+          >
+            <Popup>
+              {renderPopupContent(station)}
+            </Popup>
+          </Marker>
+        ))}
+    </MapContainer>
+  );
+}
