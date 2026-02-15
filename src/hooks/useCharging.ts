@@ -143,7 +143,9 @@ export function useCharging(): UseChargingResult {
       }, 1500);
     } else {
       console.error('Failed to parse QR code:', data);
-      setError('Neplatný QR kód');
+      // Zobraz raw dáta pre debug
+      const truncatedData = data.length > 100 ? data.substring(0, 100) + '...' : data;
+      setError(`Neplatný QR kód. Data: "${truncatedData}"`);
       setState('error');
     }
   }, [startMutation]);
