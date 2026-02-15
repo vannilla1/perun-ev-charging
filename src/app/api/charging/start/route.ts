@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getDb } from '@/lib/mongodb';
 
 const ECARUP_API_BASE = 'https://public-api.ecarup.com';
 const OAUTH_TOKEN_URL = 'https://api.smart-me.com/oauth/token';
+
+// Funkcia na vyhľadanie mapovania v MongoDB
+async function findStationBySerial(serial: string): Promise<string | null> {
+  try {
+    const db = await getDb();
+    const mapping = await db.collection('qr_mappings').findOne({ serial });
+    return mapping?.stationId || null;
+  } catch (error) {
+    console.error('MongoDB lookup error:', error);
+    return null;
+  }
+}
 
 // Cache pre token
 let cachedToken: string | null = null;
@@ -138,35 +151,43 @@ export async function POST(request: NextRequest) {
     // Skúsime nájsť stanicu podľa identifikátora (serial, EVSE ID, alebo priame ID)
     let resolvedStationId = stationId;
 
-    // Najprv skúsime priamy prístup k stanici
-    console.log(`Trying direct station lookup: ${stationId}`);
-    let stationFound = false;
+    // 1. Najprv skúsime MongoDB mapovanie (pre QR serial kódy)
+    console.log(`Checking MongoDB for serial mapping: ${stationId}`);
+    const mongoStationId = await findStationBySerial(stationId);
+    if (mongoStationId) {
+      resolvedStationId = mongoStationId;
+      console.log(`Found MongoDB mapping: ${stationId} -> ${resolvedStationId}`);
+    } else {
+      // 2. Skúsime priamy prístup k stanici
+      console.log(`Trying direct station lookup: ${stationId}`);
+      let stationFound = false;
 
-    try {
-      const directResponse = await fetch(
-        `${ECARUP_API_BASE}/v1/station/${stationId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Accept': 'application/json',
-          },
-          cache: 'no-store',
+      try {
+        const directResponse = await fetch(
+          `${ECARUP_API_BASE}/v1/station/${stationId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Accept': 'application/json',
+            },
+            cache: 'no-store',
+          }
+        );
+        stationFound = directResponse.ok;
+      } catch {
+        stationFound = false;
+      }
+
+      // 3. Ak priamy prístup nefunguje, skúsime vyhľadať podľa identifikátora v eCarUp API
+      if (!stationFound) {
+        console.log(`Direct lookup failed, searching by identifier: ${stationId}`);
+        const foundId = await findStationByIdentifier(stationId, accessToken);
+        if (foundId) {
+          resolvedStationId = foundId;
+          console.log(`Resolved identifier ${stationId} to station ID ${resolvedStationId}`);
+        } else {
+          console.log(`Station not found by identifier: ${stationId}`);
         }
-      );
-      stationFound = directResponse.ok;
-    } catch {
-      stationFound = false;
-    }
-
-    // Ak priamy prístup nefunguje, skúsime vyhľadať podľa identifikátora
-    if (!stationFound) {
-      console.log(`Direct lookup failed, searching by identifier: ${stationId}`);
-      const foundId = await findStationByIdentifier(stationId, accessToken);
-      if (foundId) {
-        resolvedStationId = foundId;
-        console.log(`Resolved identifier ${stationId} to station ID ${resolvedStationId}`);
-      } else {
-        console.log(`Station not found by identifier: ${stationId}`);
       }
     }
 
