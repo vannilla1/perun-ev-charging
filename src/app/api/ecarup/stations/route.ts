@@ -7,10 +7,10 @@ const OAUTH_TOKEN_URL = 'https://api.smart-me.com/oauth/token';
 let cachedToken: string | null = null;
 let tokenExpiry: number | null = null;
 
-// Cache pre stavy staníc (5 minút)
+// Cache pre stavy staníc (30 sekúnd pre aktuálnejšie dáta)
 let stationStatesCache: Map<string, string> = new Map();
 let statesCacheExpiry: number | null = null;
-const STATES_CACHE_TTL = 5 * 60 * 1000; // 5 minút
+const STATES_CACHE_TTL = 30 * 1000; // 30 sekúnd
 
 // Flag na zabránenie concurrent fetching
 let isFetchingStates = false;
@@ -68,18 +68,25 @@ async function getStationDetail(stationId: string, accessToken: string): Promise
           'Authorization': `Bearer ${accessToken}`,
           'Accept': 'application/json',
         },
+        cache: 'no-store', // Vždy čerstvé dáta
       }
     );
 
     if (!response.ok) {
-      return { id: stationId, state: 'AVAILABLE' }; // Default to available on error
+      console.warn(`Station ${stationId} detail fetch failed: ${response.status}`);
+      return null; // Vrátiť null - nepoznáme stav
     }
 
     const data = await response.json();
-    const state = data.connectors?.[0]?.state || 'AVAILABLE';
-    return { id: stationId, state };
-  } catch {
-    return { id: stationId, state: 'AVAILABLE' }; // Default to available on error
+    // Získať stav z prvého konektora
+    const state = data.connectors?.[0]?.state;
+    if (state) {
+      return { id: stationId, state };
+    }
+    return null;
+  } catch (error) {
+    console.warn(`Station ${stationId} detail fetch error:`, error);
+    return null;
   }
 }
 
@@ -128,6 +135,7 @@ export async function GET(request: Request) {
           'Authorization': `Bearer ${accessToken}`,
           'Accept': 'application/json',
         },
+        cache: 'no-store', // Vždy čerstvé dáta
       }
     );
 
@@ -160,16 +168,27 @@ export async function GET(request: Request) {
       }
     }
 
-    // Pridať stav ku každej stanici (použiť cache alebo default AVAILABLE)
+    // Pridať stav ku každej stanici z cache (nepoužívať default - nechať pôvodný stav z API)
     const stationsWithState = stations.map((station: { id: string; connectors?: Array<{ state?: string }> }) => ({
       ...station,
       connectors: station.connectors?.map(connector => ({
         ...connector,
-        state: stationStatesCache.get(station.id) || connector.state || 'AVAILABLE',
+        // Použiť stav z cache ak existuje, inak ponechať pôvodný stav konektora
+        state: stationStatesCache.get(station.id) || connector.state,
       })),
     }));
 
-    return NextResponse.json({ stations: stationsWithState });
+    // Pridať cache-control header pre klienta
+    return NextResponse.json(
+      { stations: stationsWithState },
+      {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    );
   } catch (error) {
     console.error('eCarUp API request failed:', error);
     return NextResponse.json(
