@@ -45,8 +45,9 @@ export async function GET() {
   }
 
   try {
+    // Skúsime bez filter parametra
     const response = await fetch(
-      `${ECARUP_API_BASE}/v1/stations?filter=all`,
+      `${ECARUP_API_BASE}/v1/stations`,
       {
         headers: {
           'Authorization': `Bearer ${accessToken}`,

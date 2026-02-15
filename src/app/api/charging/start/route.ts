@@ -55,7 +55,7 @@ async function findStationByIdentifier(identifier: string, accessToken: string):
   try {
     // Získame všetky stanice a hľadáme podľa rôznych identifikátorov
     const response = await fetch(
-      `${ECARUP_API_BASE}/v1/stations?filter=all`,
+      `${ECARUP_API_BASE}/v1/stations`,
       {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -66,10 +66,12 @@ async function findStationByIdentifier(identifier: string, accessToken: string):
     );
 
     if (!response.ok) {
+      console.error('Failed to fetch stations:', response.status);
       return null;
     }
 
-    const stations = await response.json();
+    const data = await response.json();
+    const stations = data.stations || data || [];
 
     // Hľadáme stanicu podľa rôznych identifikátorov
     for (const station of stations) {
