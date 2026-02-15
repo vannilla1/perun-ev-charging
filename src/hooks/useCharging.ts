@@ -11,7 +11,19 @@ import {
   getStationInfo,
 } from '@/services/api/chargingService';
 
-export type ChargingState = 'idle' | 'scanning' | 'connecting' | 'station_info' | 'charging' | 'stopping' | 'completed' | 'error';
+// Extended states to include payment flow
+export type ChargingState =
+  | 'idle'
+  | 'scanning'
+  | 'connecting'
+  | 'station_info'
+  | 'payment'        // Guest payment collection
+  | 'authorizing'    // Pre-auth in progress
+  | 'starting'       // OCPP start in progress
+  | 'charging'
+  | 'stopping'
+  | 'completed'
+  | 'error';
 
 interface ChargingStats {
   power: number;
@@ -32,21 +44,37 @@ interface StationInfo {
   originalUrl?: string;
 }
 
+interface GuestPaymentInfo {
+  email: string;
+  paymentIntentId: string;
+  preAuthAmount: number;
+  clientSecret: string;
+}
+
 interface UseChargingResult {
   state: ChargingState;
   sessionId: string | null;
   stats: ChargingStats;
   stationInfo: StationInfo | null;
   error: string | null;
+  isGuest: boolean;
+  guestPaymentInfo: GuestPaymentInfo | null;
+  preAuthAmount: number;
   startScanning: () => void;
   stopScanning: () => void;
   handleQRScan: (data: string) => void;
   handleManualCode: (code: string) => void;
   confirmStartCharging: () => void;
+  initiateGuestPayment: () => void;
+  createPreAuth: (email: string) => Promise<void>;
+  confirmGuestPayment: (paymentIntentId: string, email: string) => void;
+  startGuestCharging: () => Promise<void>;
   stopSession: () => void;
   reset: () => void;
   formatDuration: typeof formatDuration;
 }
+
+const DEFAULT_PREAUTH_AMOUNT = 30; // EUR
 
 export function useCharging(): UseChargingResult {
   const queryClient = useQueryClient();
@@ -54,6 +82,8 @@ export function useCharging(): UseChargingResult {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stationInfo, setStationInfo] = useState<StationInfo | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
+  const [guestPaymentInfo, setGuestPaymentInfo] = useState<GuestPaymentInfo | null>(null);
   const [stats, setStats] = useState<ChargingStats>({
     power: 0,
     energy: 0,
@@ -67,7 +97,6 @@ export function useCharging(): UseChargingResult {
       getStationInfo(stationId, connectorId, originalUrl),
     onSuccess: (data) => {
       if (data.redirectUrl) {
-        // Ak API vráti redirect URL, presmerujeme na eCarUp
         window.location.href = data.redirectUrl;
         return;
       }
@@ -91,7 +120,7 @@ export function useCharging(): UseChargingResult {
     },
   });
 
-  // Mutation pre spustenie nabíjania
+  // Mutation pre spustenie nabíjania (pre registrovaných)
   const startMutation = useMutation({
     mutationFn: ({ stationId, connectorId, originalUrl }: { stationId: string; connectorId: string; originalUrl?: string }) =>
       startCharging(stationId, connectorId, originalUrl),
@@ -102,7 +131,6 @@ export function useCharging(): UseChargingResult {
       }
       setSessionId(data.sessionId || null);
       setState('charging');
-      // Nastavíme počiatočný výkon
       setStats(prev => ({
         ...prev,
         power: stationInfo?.maxPower || 22,
@@ -131,6 +159,99 @@ export function useCharging(): UseChargingResult {
     onError: (err) => {
       setState('error');
       setError(err instanceof Error ? err.message : 'Nepodarilo sa zastaviť nabíjanie');
+    },
+  });
+
+  // Mutation pre vytvorenie predautorizácie
+  const preAuthMutation = useMutation({
+    mutationFn: async ({ email }: { email: string }) => {
+      const response = await fetch('/api/payments/preauth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          stationId: stationInfo?.stationId,
+          connectorId: stationInfo?.connectorId,
+          stationName: stationInfo?.name,
+          amount: DEFAULT_PREAUTH_AMOUNT,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Nepodarilo sa vytvoriť predautorizáciu');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setGuestPaymentInfo({
+        email: '',
+        paymentIntentId: data.paymentIntentId,
+        preAuthAmount: data.preAuthAmount,
+        clientSecret: data.clientSecret,
+      });
+      // State zostáva na 'payment' - čakáme na potvrdenie platby
+    },
+    onError: (err) => {
+      setState('error');
+      setError(err instanceof Error ? err.message : 'Nepodarilo sa vytvoriť predautorizáciu');
+    },
+  });
+
+  // Mutation pre spustenie guest nabíjania cez OCPP
+  const guestStartMutation = useMutation({
+    mutationFn: async () => {
+      if (!stationInfo || !guestPaymentInfo) {
+        throw new Error('Chýbajú údaje pre spustenie nabíjania');
+      }
+
+      const response = await fetch('/api/charging/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stationId: stationInfo.stationId,
+          connectorId: stationInfo.connectorId,
+          isGuest: true,
+          paymentIntentId: guestPaymentInfo.paymentIntentId,
+          email: guestPaymentInfo.email,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Nepodarilo sa spustiť nabíjanie');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setSessionId(data.sessionId);
+      setState('charging');
+      setStats(prev => ({
+        ...prev,
+        power: stationInfo?.maxPower || 22,
+      }));
+      setError(null);
+    },
+    onError: async (err) => {
+      // Zrušiť predautorizáciu pri zlyhaní
+      if (guestPaymentInfo?.paymentIntentId) {
+        try {
+          await fetch('/api/payments/cancel-preauth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paymentIntentId: guestPaymentInfo.paymentIntentId,
+              reason: 'abandoned',
+            }),
+          });
+        } catch (cancelError) {
+          console.error('Failed to cancel pre-auth:', cancelError);
+        }
+      }
+      setState('error');
+      setError(err instanceof Error ? err.message : 'Nepodarilo sa spustiť nabíjanie');
     },
   });
 
@@ -189,7 +310,6 @@ export function useCharging(): UseChargingResult {
 
     if (parsed) {
       setState('connecting');
-      // Získame info o stanici namiesto priameho štartu nabíjania
       setTimeout(() => {
         stationInfoMutation.mutate({
           stationId: parsed.stationId,
@@ -219,9 +339,10 @@ export function useCharging(): UseChargingResult {
     }
   }, [stationInfoMutation]);
 
-  // Nová funkcia - používateľ potvrdzuje začatie nabíjania
+  // Pre registrovaných používateľov
   const confirmStartCharging = useCallback(() => {
     if (stationInfo) {
+      setIsGuest(false);
       setState('connecting');
       startMutation.mutate({
         stationId: stationInfo.stationId,
@@ -230,6 +351,39 @@ export function useCharging(): UseChargingResult {
       });
     }
   }, [stationInfo, startMutation]);
+
+  // Inicializácia guest platobného procesu
+  const initiateGuestPayment = useCallback(() => {
+    setIsGuest(true);
+    setState('payment');
+    setError(null);
+  }, []);
+
+  // Vytvorenie predautorizácie
+  const createPreAuth = useCallback(async (email: string) => {
+    setState('authorizing');
+    preAuthMutation.mutate({ email });
+  }, [preAuthMutation]);
+
+  // Potvrdenie platby (po úspešnej Stripe autorizácii)
+  const confirmGuestPayment = useCallback((paymentIntentId: string, email: string) => {
+    setGuestPaymentInfo(prev => prev ? {
+      ...prev,
+      paymentIntentId,
+      email,
+    } : {
+      email,
+      paymentIntentId,
+      preAuthAmount: DEFAULT_PREAUTH_AMOUNT,
+      clientSecret: '',
+    });
+    setState('starting');
+  }, []);
+
+  // Spustenie guest nabíjania
+  const startGuestCharging = useCallback(async () => {
+    guestStartMutation.mutate();
+  }, [guestStartMutation]);
 
   const stopSession = useCallback(() => {
     if (sessionId) {
@@ -243,6 +397,8 @@ export function useCharging(): UseChargingResult {
     setSessionId(null);
     setStationInfo(null);
     setError(null);
+    setIsGuest(false);
+    setGuestPaymentInfo(null);
     setStats({ power: 0, energy: 0, duration: 0, cost: 0 });
   }, []);
 
@@ -252,11 +408,18 @@ export function useCharging(): UseChargingResult {
     stats,
     stationInfo,
     error,
+    isGuest,
+    guestPaymentInfo,
+    preAuthAmount: DEFAULT_PREAUTH_AMOUNT,
     startScanning,
     stopScanning,
     handleQRScan,
     handleManualCode,
     confirmStartCharging,
+    initiateGuestPayment,
+    createPreAuth,
+    confirmGuestPayment,
+    startGuestCharging,
     stopSession,
     reset,
     formatDuration,

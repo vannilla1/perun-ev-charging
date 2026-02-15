@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { AppLayout, PageHeader } from '@/components/Layout';
 import { Card, CardContent, Button, Input } from '@/components/Common';
 import { useCharging } from '@/hooks';
+import { StripeProvider, GuestPaymentForm } from '@/components/Payments';
 
 // Dynamický import QR skenera (potrebuje prístup k window)
 const QRScanner = dynamic(
@@ -35,21 +36,43 @@ export default function ChargingPage() {
   const t = useTranslations('charging');
   const [stationCode, setStationCode] = useState('');
   const [showScanner, setShowScanner] = useState(false);
+  const [guestEmail, setGuestEmail] = useState('');
+  const [preAuthClientSecret, setPreAuthClientSecret] = useState<string | null>(null);
 
   const {
     state,
     stats,
     stationInfo,
     error,
+    isGuest,
+    guestPaymentInfo,
+    preAuthAmount,
     startScanning,
     stopScanning,
     handleQRScan,
     handleManualCode,
     confirmStartCharging,
+    initiateGuestPayment,
+    confirmGuestPayment,
+    startGuestCharging,
     stopSession,
     reset,
     formatDuration,
   } = useCharging();
+
+  // Fetch pre-auth client secret when entering payment state
+  useEffect(() => {
+    if (state === 'payment' && stationInfo && !preAuthClientSecret) {
+      // We'll create the pre-auth when user enters email in the form
+    }
+  }, [state, stationInfo, preAuthClientSecret]);
+
+  // Start charging when payment is confirmed and state changes to 'starting'
+  useEffect(() => {
+    if (state === 'starting' && guestPaymentInfo?.paymentIntentId) {
+      startGuestCharging();
+    }
+  }, [state, guestPaymentInfo, startGuestCharging]);
 
   const handleOpenScanner = () => {
     setShowScanner(true);
@@ -75,6 +98,39 @@ export default function ChargingPage() {
   const handleNewSession = () => {
     reset();
     setStationCode('');
+    setGuestEmail('');
+    setPreAuthClientSecret(null);
+  };
+
+  const handleGuestPaymentConfirmed = (paymentIntentId: string, email: string) => {
+    setGuestEmail(email);
+    confirmGuestPayment(paymentIntentId, email);
+  };
+
+  const handleInitiatePreAuth = async (email: string) => {
+    setGuestEmail(email);
+    try {
+      const response = await fetch('/api/payments/preauth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          stationId: stationInfo?.stationId,
+          connectorId: stationInfo?.connectorId,
+          stationName: stationInfo?.name,
+          amount: preAuthAmount,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Nepodarilo sa vytvoriť predautorizáciu');
+      }
+
+      const data = await response.json();
+      setPreAuthClientSecret(data.clientSecret);
+    } catch (err) {
+      console.error('Pre-auth error:', err);
+    }
   };
 
   const renderIdleState = () => (
@@ -172,7 +228,7 @@ export default function ChargingPage() {
     </div>
   );
 
-  // NOVÝ STAV - Zobrazenie informácií o stanici
+  // NOVÝ STAV - Zobrazenie informácií o stanici s možnosťou guest nabíjania
   const renderStationInfoState = () => (
     <div className="p-4 sm:p-6 pt-6 sm:pt-8">
       {/* Header s ikonou a stavom */}
@@ -229,30 +285,38 @@ export default function ChargingPage() {
             <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
               <span className="text-[var(--text-secondary)]">Cena za energiu</span>
               <span className="font-semibold text-[var(--accent)]">
-                {stationInfo?.pricePerKwh?.toFixed(2) || '0.44'} €/kWh
+                {stationInfo?.pricePerKwh?.toFixed(2) || '0.44'} EUR/kWh
               </span>
             </div>
 
             {/* Cena za čas */}
             <div className="flex justify-between items-center py-2">
               <span className="text-[var(--text-secondary)]">Cena za čas</span>
-              <span className="font-semibold">0.00 €/hod</span>
+              <span className="font-semibold">0.00 EUR/hod</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Tlačidlá */}
+      {/* Tlačidlá - Guest nabíjanie */}
       <div className="space-y-3">
         <Button
-          onClick={confirmStartCharging}
+          onClick={initiateGuestPayment}
           fullWidth
           size="lg"
           disabled={stationInfo?.status !== 'AVAILABLE'}
         >
-          Začať nabíjanie
+          Nabíjať bez registrácie
         </Button>
-        <Button onClick={handleNewSession} variant="outline" fullWidth>
+        <Button
+          onClick={confirmStartCharging}
+          variant="outline"
+          fullWidth
+          disabled={stationInfo?.status !== 'AVAILABLE'}
+        >
+          Mám účet - Prihlásiť sa
+        </Button>
+        <Button onClick={handleNewSession} variant="ghost" fullWidth>
           Zrušiť
         </Button>
       </div>
@@ -263,6 +327,127 @@ export default function ChargingPage() {
           Stanica momentálne nie je dostupná. Skúste neskôr.
         </p>
       )}
+    </div>
+  );
+
+  // NOVÝ STAV - Platobný formulár pre guest používateľov
+  const renderPaymentState = () => (
+    <div className="p-4 sm:p-6 pt-6 sm:pt-8">
+      <h2 className="text-xl font-bold text-center text-[var(--text-primary)] mb-6">
+        Platba za nabíjanie
+      </h2>
+
+      {preAuthClientSecret ? (
+        <StripeProvider>
+          <GuestPaymentForm
+            clientSecret={preAuthClientSecret}
+            preAuthAmount={preAuthAmount}
+            stationInfo={{
+              name: stationInfo?.name || 'Nabíjacia stanica',
+              address: stationInfo?.address || '',
+              pricePerKwh: stationInfo?.pricePerKwh || 0.44,
+            }}
+            onPaymentConfirmed={handleGuestPaymentConfirmed}
+            onCancel={handleNewSession}
+          />
+        </StripeProvider>
+      ) : (
+        <div className="space-y-6">
+          {/* Station Info Summary */}
+          <div className="bg-[var(--card-alt)] rounded-2xl p-4">
+            <h3 className="font-semibold text-[var(--text-primary)] mb-2">
+              {stationInfo?.name || 'Nabíjacia stanica'}
+            </h3>
+            <p className="text-sm text-[var(--text-secondary)] mb-3">
+              {stationInfo?.address}
+            </p>
+            <div className="flex justify-between items-center pt-3 border-t border-[var(--border)]">
+              <span className="text-sm text-[var(--text-secondary)]">Cena za kWh</span>
+              <span className="font-semibold text-[var(--text-primary)]">
+                {(stationInfo?.pricePerKwh || 0.44).toFixed(2)} EUR
+              </span>
+            </div>
+          </div>
+
+          {/* Pre-authorization Info */}
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+            <div className="flex items-start gap-3">
+              <div className="text-2xl">💳</div>
+              <div>
+                <h4 className="font-semibold text-blue-900">Predautorizácia</h4>
+                <p className="text-sm text-blue-700 mt-1">
+                  Na vašej karte bude dočasne zablokovaná suma{' '}
+                  <strong>{preAuthAmount.toFixed(2)} EUR</strong>.
+                  Po ukončení nabíjania bude strhnutá len skutočná suma.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Email Form */}
+          <div>
+            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+              Váš email (pre potvrdenie)
+            </label>
+            <Input
+              type="email"
+              placeholder="vas@email.sk"
+              value={guestEmail}
+              onChange={(e) => setGuestEmail(e.target.value)}
+              className="mb-4"
+            />
+            <Button
+              onClick={() => handleInitiatePreAuth(guestEmail)}
+              fullWidth
+              disabled={!guestEmail || !guestEmail.includes('@')}
+            >
+              Pokračovať k platbe
+            </Button>
+          </div>
+
+          <Button onClick={handleNewSession} variant="outline" fullWidth>
+            Zrušiť
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+
+  // NOVÝ STAV - Autorizácia prebieha
+  const renderAuthorizingState = () => (
+    <div className="flex flex-col items-center justify-center p-6 min-h-[400px]">
+      <div className="animate-spin mb-6">
+        <svg className="h-16 w-16 text-[var(--primary)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+        </svg>
+      </div>
+      <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
+        Autorizujem platbu...
+      </h2>
+      <p className="text-[var(--text-secondary)] text-center">
+        Prosím počkajte, overujeme vašu platobnú kartu
+      </p>
+    </div>
+  );
+
+  // NOVÝ STAV - Spúšťanie nabíjania cez OCPP
+  const renderStartingState = () => (
+    <div className="flex flex-col items-center justify-center p-6 min-h-[400px]">
+      <div className="animate-pulse mb-6">
+        <div className="w-24 h-24 rounded-full bg-[var(--secondary)] flex items-center justify-center text-white">
+          <BoltIcon />
+        </div>
+      </div>
+      <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
+        Spúšťam nabíjanie...
+      </h2>
+      <p className="text-[var(--text-secondary)] text-center">
+        Pripojte kábel k vozidlu
+      </p>
+      <div className="mt-4 text-sm text-[var(--text-muted)]">
+        Platba bola autorizovaná: {preAuthAmount.toFixed(2)} EUR
+      </div>
     </div>
   );
 
@@ -284,6 +469,15 @@ export default function ChargingPage() {
       <h2 className="text-xl font-semibold text-center text-[var(--text-primary)] mb-8">
         {t('chargingInProgress')}
       </h2>
+
+      {/* Guest info banner */}
+      {isGuest && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6">
+          <p className="text-sm text-blue-800 text-center">
+            Predautorizácia: {preAuthAmount.toFixed(2)} EUR | Po nabíjaní bude strhnutá skutočná suma
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 sm:gap-5 mb-10">
         <Card className="text-center">
@@ -317,7 +511,7 @@ export default function ChargingPage() {
           <CardContent>
             <p className="text-sm text-[var(--text-secondary)] mb-1">{t('estimatedCost')}</p>
             <p className="text-2xl font-bold text-[var(--accent)]">
-              {stats.cost.toFixed(2)} <span className="text-base font-normal">€</span>
+              {stats.cost.toFixed(2)} <span className="text-base font-normal">EUR</span>
             </p>
           </CardContent>
         </Card>
@@ -340,6 +534,11 @@ export default function ChargingPage() {
       <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
         Zastavujem nabíjanie...
       </h2>
+      {isGuest && (
+        <p className="text-[var(--text-secondary)] text-center mt-2">
+          Strhávam platbu za {stats.cost.toFixed(2)} EUR
+        </p>
+      )}
     </div>
   );
 
@@ -357,6 +556,14 @@ export default function ChargingPage() {
         {t('chargingComplete')}
       </h2>
 
+      {isGuest && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-6">
+          <p className="text-sm text-green-800 text-center">
+            Potvrdenie bolo odoslané na: {guestEmail}
+          </p>
+        </div>
+      )}
+
       <div className="space-y-5 my-10">
         <div className="flex justify-between py-3 border-b border-[var(--border)]">
           <span className="text-[var(--text-secondary)]">{t('energyDelivered')}</span>
@@ -368,7 +575,7 @@ export default function ChargingPage() {
         </div>
         <div className="flex justify-between py-3">
           <span className="text-[var(--text-secondary)]">{t('finalCost')}</span>
-          <span className="font-bold text-xl text-[var(--primary)]">{stats.cost.toFixed(2)} €</span>
+          <span className="font-bold text-xl text-[var(--primary)]">{stats.cost.toFixed(2)} EUR</span>
         </div>
       </div>
 
@@ -397,10 +604,28 @@ export default function ChargingPage() {
     </div>
   );
 
+  const getPageTitle = () => {
+    switch (state) {
+      case 'station_info':
+        return 'Nabíjacia stanica';
+      case 'payment':
+        return 'Platba';
+      case 'authorizing':
+      case 'starting':
+        return 'Spúšťam nabíjanie';
+      case 'charging':
+        return 'Nabíjanie';
+      case 'completed':
+        return 'Dokončené';
+      default:
+        return t('scanQr');
+    }
+  };
+
   return (
     <AppLayout
       header={
-        <PageHeader title={state === 'station_info' ? 'Nabíjacia stanica' : t('scanQr')} />
+        <PageHeader title={getPageTitle()} />
       }
     >
       <div className="max-w-lg mx-auto">
@@ -408,6 +633,9 @@ export default function ChargingPage() {
         {state === 'scanning' && renderIdleState()}
         {state === 'connecting' && renderConnectingState()}
         {state === 'station_info' && renderStationInfoState()}
+        {state === 'payment' && renderPaymentState()}
+        {state === 'authorizing' && renderAuthorizingState()}
+        {state === 'starting' && renderStartingState()}
         {state === 'charging' && renderChargingState()}
         {state === 'stopping' && renderStoppingState()}
         {state === 'completed' && renderCompletedState()}
