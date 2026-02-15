@@ -108,13 +108,22 @@ async function findStationByIdentifier(identifier: string, accessToken: string):
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    let { stationId, connectorId } = body;
+    const { stationId, connectorId, originalUrl } = body;
 
     if (!stationId) {
       return NextResponse.json(
         { error: 'ID stanice je povinné' },
         { status: 400 }
       );
+    }
+
+    // Ak máme originalUrl a stationId je špeciálny marker, presmerujeme na eCarUp
+    if (stationId === 'ecarup-redirect' && originalUrl) {
+      return NextResponse.json({
+        success: true,
+        redirectUrl: originalUrl,
+        message: 'Presmerovanie na eCarUp platobný portál',
+      });
     }
 
     const accessToken = await getAccessToken();
@@ -174,6 +183,15 @@ export async function POST(request: NextRequest) {
     );
 
     if (!stationResponse.ok) {
+      // Ak máme originalUrl, presmerujeme na eCarUp namiesto chyby
+      if (originalUrl) {
+        console.log(`Station not found, redirecting to original URL: ${originalUrl}`);
+        return NextResponse.json({
+          success: true,
+          redirectUrl: originalUrl,
+          message: 'Stanica nebola nájdená v našom systéme. Presmerovanie na eCarUp.',
+        });
+      }
       return NextResponse.json(
         { error: 'Stanica nebola nájdená' },
         { status: 404 }

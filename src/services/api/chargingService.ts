@@ -17,6 +17,7 @@ interface StartChargingResponse {
   stationId?: string;
   connectorId?: string;
   startTime?: string;
+  redirectUrl?: string;
 }
 
 interface StopChargingResponse {
@@ -62,7 +63,8 @@ export async function getActiveCharging(
 // Spustenie nabíjania
 export async function startCharging(
   stationId: string,
-  connectorId: string
+  connectorId: string,
+  originalUrl?: string
 ): Promise<StartChargingResponse> {
   try {
     const response = await fetch('/api/charging/start', {
@@ -70,7 +72,7 @@ export async function startCharging(
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ stationId, connectorId }),
+      body: JSON.stringify({ stationId, connectorId, originalUrl }),
     });
 
     const data = await response.json();
@@ -137,7 +139,7 @@ export async function getSessionStatus(sessionId: string): Promise<SessionStatus
 }
 
 // Parsovanie QR kódu stanice
-export function parseStationQRCode(qrData: string): { stationId: string; connectorId?: string } | null {
+export function parseStationQRCode(qrData: string): { stationId: string; connectorId?: string; originalUrl?: string } | null {
   try {
     // Trim whitespace
     const data = qrData.trim();
@@ -158,14 +160,15 @@ export function parseStationQRCode(qrData: string): { stationId: string; connect
     if (data.startsWith('http')) {
       const url = new URL(data);
 
-      // eCarUp domény
+      // eCarUp domény - vždy uložíme originálnu URL pre fallback
       if (url.hostname.includes('ecarup.com')) {
         // Priorita 1: serial parameter (hlavný formát z QR kódov)
         // https://www.ecarup.com/app/?serial=IBQqDLHD3m4KVBPAD4ed4Nyr3z
         const serial = url.searchParams.get('serial');
         if (serial) {
           console.log('Found eCarUp serial:', serial);
-          return { stationId: serial };
+          // Vrátime serial ako ID a originálnu URL pre prípad že nenájdeme stanicu
+          return { stationId: serial, originalUrl: data };
         }
 
         // Priorita 2: EVSE ID v path
@@ -177,15 +180,18 @@ export function parseStationQRCode(qrData: string): { stationId: string; connect
           const evseId = pathParts.find(part => /^[A-Z]{2}\*/i.test(part));
           if (evseId) {
             console.log('Found EVSE ID:', evseId);
-            return { stationId: evseId };
+            return { stationId: evseId, originalUrl: data };
           }
           // Alebo posledná časť path ako ID
           const lastPart = pathParts[pathParts.length - 1];
           if (lastPart && lastPart.length >= 4 && !['charge', 'pay', 'station', 'app'].includes(lastPart.toLowerCase())) {
             console.log('Using last path part as ID:', lastPart);
-            return { stationId: lastPart };
+            return { stationId: lastPart, originalUrl: data };
           }
         }
+
+        // Ak máme eCarUp URL ale nenašli sme ID, vrátime URL ako fallback
+        return { stationId: 'ecarup-redirect', originalUrl: data };
       }
 
       // Generická URL s parametrami

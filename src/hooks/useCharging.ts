@@ -47,9 +47,14 @@ export function useCharging(): UseChargingResult {
 
   // Mutation pre spustenie nabíjania
   const startMutation = useMutation({
-    mutationFn: ({ stationId, connectorId }: { stationId: string; connectorId: string }) =>
-      startCharging(stationId, connectorId),
+    mutationFn: ({ stationId, connectorId, originalUrl }: { stationId: string; connectorId: string; originalUrl?: string }) =>
+      startCharging(stationId, connectorId, originalUrl),
     onSuccess: (data) => {
+      // Ak API vráti redirect URL, presmerujeme na eCarUp
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl;
+        return;
+      }
       setSessionId(data.sessionId);
       setState('charging');
       setError(null);
@@ -139,6 +144,7 @@ export function useCharging(): UseChargingResult {
         startMutation.mutate({
           stationId: parsed.stationId,
           connectorId: parsed.connectorId || 'default',
+          originalUrl: parsed.originalUrl,
         });
       }, 1500);
     } else {
