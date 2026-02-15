@@ -128,7 +128,9 @@ export function useCharging(): UseChargingResult {
   }, []);
 
   const handleQRScan = useCallback((data: string) => {
+    console.log('QR Scan received:', data);
     const parsed = parseStationQRCode(data);
+    console.log('QR Parse result:', parsed);
 
     if (parsed) {
       setState('connecting');
@@ -140,6 +142,7 @@ export function useCharging(): UseChargingResult {
         });
       }, 1500);
     } else {
+      console.error('Failed to parse QR code:', data);
       setError('Neplatný QR kód');
       setState('error');
     }

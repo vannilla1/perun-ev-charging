@@ -160,17 +160,24 @@ export function parseStationQRCode(qrData: string): { stationId: string; connect
 
       // eCarUp domény - extrahovať ID z path
       if (url.hostname.includes('ecarup.com')) {
-        const pathParts = url.pathname.split('/').filter(Boolean);
+        // Dekóduj pathname (hviezdička môže byť %2A)
+        const decodedPath = decodeURIComponent(url.pathname);
+        const pathParts = decodedPath.split('/').filter(Boolean);
+
+        console.log('eCarUp URL detected, path parts:', pathParts);
+
         // /charge/STATION_ID alebo /STATION_ID
         if (pathParts.length >= 1) {
           // Nájsť EVSE ID (začína na CH*, SK*, AT*, DE* atď.)
-          const evseId = pathParts.find(part => /^[A-Z]{2}\*/.test(part));
+          const evseId = pathParts.find(part => /^[A-Z]{2}\*/i.test(part));
           if (evseId) {
+            console.log('Found EVSE ID:', evseId);
             return { stationId: evseId };
           }
-          // Alebo posledná časť path ako ID
+          // Alebo posledná časť path ako ID (ak nie je "charge" alebo podobné)
           const lastPart = pathParts[pathParts.length - 1];
-          if (lastPart && lastPart.length >= 4) {
+          if (lastPart && lastPart.length >= 4 && !['charge', 'pay', 'station'].includes(lastPart.toLowerCase())) {
+            console.log('Using last path part as ID:', lastPart);
             return { stationId: lastPart };
           }
         }
@@ -183,6 +190,7 @@ export function parseStationQRCode(qrData: string): { stationId: string; connect
         return { stationId, connectorId: connectorId || undefined };
       }
 
+      // Ak nič nenájdeme v eCarUp URL, vráť null
       return null;
     }
 
