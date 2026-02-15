@@ -9,6 +9,8 @@ interface QRScannerProps {
   onClose?: () => void;
 }
 
+type CameraFacing = 'environment' | 'user';
+
 // Kontrola či sme v secure kontexte (HTTPS alebo localhost)
 const isSecureContext = () => {
   if (typeof window === 'undefined') return false;
@@ -31,11 +33,20 @@ const isSecureContext = () => {
   );
 };
 
+// Ikona pre prepnutie kamery
+const SwitchCameraIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+  </svg>
+);
+
 export function QRScanner({ onScan, onError, onClose }: QRScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isInsecureContext, setIsInsecureContext] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<CameraFacing>('environment');
+  const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -54,82 +65,91 @@ export function QRScanner({ onScan, onError, onClose }: QRScannerProps) {
     setIsScanning(false);
   }, []);
 
-  useEffect(() => {
-    const initScanner = async () => {
-      if (!containerRef.current) return;
+  const startScanner = useCallback(async (facing: CameraFacing) => {
+    if (!containerRef.current) return;
 
-      // Kontrola secure kontextu
-      if (!isSecureContext()) {
-        setIsInsecureContext(true);
-        setHasPermission(false);
-        const message = 'Kamera vyžaduje HTTPS pripojenie. V prehliadači otvorte aplikáciu cez https:// alebo localhost.';
-        setErrorMessage(message);
-        // Toto nie je skutočná chyba, len informácia o potrebe HTTPS
-        // Nevoláme onError, lebo UI už zobrazuje správu
-        return;
-      }
+    // Kontrola secure kontextu
+    if (!isSecureContext()) {
+      setIsInsecureContext(true);
+      setHasPermission(false);
+      const message = 'Kamera vyžaduje HTTPS pripojenie. V prehliadači otvorte aplikáciu cez https:// alebo localhost.';
+      setErrorMessage(message);
+      return;
+    }
 
-      try {
-        // Vytvorenie scanneru
-        scannerRef.current = new Html5Qrcode('qr-reader');
-
-        // Získanie povolenia kamery
-        const devices = await Html5Qrcode.getCameras();
-
-        if (devices && devices.length > 0) {
-          setHasPermission(true);
-
-          // Preferovať zadnú kameru
-          const backCamera = devices.find(
-            (d) => d.label.toLowerCase().includes('back') ||
-                   d.label.toLowerCase().includes('rear') ||
-                   d.label.toLowerCase().includes('environment')
-          );
-          const cameraId = backCamera?.id || devices[0].id;
-
-          await scannerRef.current.start(
-            cameraId,
-            {
-              fps: 10,
-              qrbox: { width: 250, height: 250 },
-              aspectRatio: 1,
-            },
-            (decodedText) => {
-              // Úspešné skenovanie
-              onScan(decodedText);
-              stopScanner();
-            },
-            (scanErrorMessage) => {
-              // Ignorovať bežné chyby skenovania
-              if (!scanErrorMessage.includes('No QR code found')) {
-                console.debug('QR scan error:', scanErrorMessage);
-              }
-            }
-          );
-
-          setIsScanning(true);
-        } else {
-          setHasPermission(false);
-          setErrorMessage('Žiadna kamera nebola nájdená');
-          onError?.('Žiadna kamera nebola nájdená');
+    try {
+      // Zastavíme existujúci scanner ak beží
+      if (scannerRef.current) {
+        try {
+          const state = scannerRef.current.getState();
+          if (state === Html5QrcodeScannerState.SCANNING) {
+            await scannerRef.current.stop();
+          }
+        } catch {
+          // Ignorujeme chyby pri zastavovaní
         }
-      } catch (err) {
-        // Použiť warn namiesto error - očakávané stavy (napr. zamietnuté povolenie)
-        console.warn('Scanner init:', err);
-        setHasPermission(false);
-
-        const error = err instanceof Error ? err.message : 'Nepodarilo sa spustiť kameru';
-        setErrorMessage(error);
-        onError?.(error);
       }
-    };
 
-    initScanner();
+      // Vytvorenie scanneru
+      scannerRef.current = new Html5Qrcode('qr-reader');
+
+      // Získanie zoznamu kamier pre detekciu či máme viac kamier
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        setHasMultipleCameras(devices && devices.length > 1);
+      } catch {
+        setHasMultipleCameras(false);
+      }
+
+      // Použijeme facingMode namiesto konkrétneho cameraId
+      // 'environment' = zadná kamera, 'user' = predná kamera
+      await scannerRef.current.start(
+        { facingMode: facing },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1,
+        },
+        (decodedText) => {
+          // Úspešné skenovanie
+          onScan(decodedText);
+          stopScanner();
+        },
+        (scanErrorMessage) => {
+          // Ignorovať bežné chyby skenovania
+          if (!scanErrorMessage.includes('No QR code found')) {
+            console.debug('QR scan error:', scanErrorMessage);
+          }
+        }
+      );
+
+      setHasPermission(true);
+      setIsScanning(true);
+      setCameraFacing(facing);
+    } catch (err) {
+      console.warn('Scanner init:', err);
+      setHasPermission(false);
+
+      const error = err instanceof Error ? err.message : 'Nepodarilo sa spustiť kameru';
+      setErrorMessage(error);
+      onError?.(error);
+    }
+  }, [onScan, onError, stopScanner]);
+
+  // Funkcia na prepnutie kamery
+  const switchCamera = useCallback(async () => {
+    const newFacing: CameraFacing = cameraFacing === 'environment' ? 'user' : 'environment';
+    await startScanner(newFacing);
+  }, [cameraFacing, startScanner]);
+
+  useEffect(() => {
+    // Štartujeme so zadnou kamerou (environment)
+    startScanner('environment');
 
     return () => {
       stopScanner();
     };
-  }, [onScan, onError, stopScanner]);
+  }, [startScanner, stopScanner]);
 
   const handleClose = () => {
     stopScanner();
@@ -236,6 +256,24 @@ export function QRScanner({ onScan, onError, onClose }: QRScannerProps) {
             </svg>
             <p>Spúšťam kameru...</p>
           </div>
+        </div>
+      )}
+
+      {/* Tlačidlo na prepnutie kamery - zobrazí sa len ak máme viac kamier */}
+      {hasMultipleCameras && isScanning && (
+        <button
+          onClick={switchCamera}
+          className="absolute bottom-2 left-2 w-10 h-10 rounded-full bg-black bg-opacity-50 flex items-center justify-center text-white hover:bg-opacity-70 transition-colors"
+          title={cameraFacing === 'environment' ? 'Prepnúť na prednú kameru' : 'Prepnúť na zadnú kameru'}
+        >
+          <SwitchCameraIcon />
+        </button>
+      )}
+
+      {/* Indikátor aktívnej kamery */}
+      {isScanning && (
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black bg-opacity-50 text-white text-xs">
+          {cameraFacing === 'environment' ? 'Zadná kamera' : 'Predná kamera'}
         </div>
       )}
 
