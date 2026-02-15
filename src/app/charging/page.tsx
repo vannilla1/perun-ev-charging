@@ -25,6 +25,12 @@ const BoltIcon = () => (
   </svg>
 );
 
+const PlugIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+  </svg>
+);
+
 export default function ChargingPage() {
   const t = useTranslations('charging');
   const [stationCode, setStationCode] = useState('');
@@ -33,11 +39,13 @@ export default function ChargingPage() {
   const {
     state,
     stats,
+    stationInfo,
     error,
     startScanning,
     stopScanning,
     handleQRScan,
     handleManualCode,
+    confirmStartCharging,
     stopSession,
     reset,
     formatDuration,
@@ -79,7 +87,6 @@ export default function ChargingPage() {
           <QRScanner
             onScan={handleScanSuccess}
             onError={(err) => {
-              // HTTPS chyba nie je skutočná chyba, len informácia
               if (err.includes('HTTPS') || err.includes('secure')) {
                 console.info('QR Scanner: Vyžaduje sa HTTPS pripojenie');
               } else {
@@ -91,7 +98,6 @@ export default function ChargingPage() {
         </div>
       ) : (
         <>
-          {/* QR Scanner placeholder */}
           <div className="relative" style={{ marginBottom: '48px' }}>
             <div
               className="w-64 h-64 border-4 border-dashed border-[var(--primary)] rounded-2xl flex items-center justify-center bg-[var(--surface-secondary)] cursor-pointer hover:bg-[var(--surface)] transition-colors"
@@ -106,7 +112,6 @@ export default function ChargingPage() {
                 </p>
               </div>
             </div>
-            {/* Animované rohy */}
             <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-[var(--primary)] rounded-tl-lg" />
             <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-[var(--primary)] rounded-tr-lg" />
             <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-[var(--primary)] rounded-bl-lg" />
@@ -159,17 +164,110 @@ export default function ChargingPage() {
         </div>
       </div>
       <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
-        {t('preparingSession')}
+        Načítavam stanicu...
       </h2>
       <p className="text-[var(--text-secondary)]">
-        {t('connectCable')}
+        Prosím počkajte
       </p>
+    </div>
+  );
+
+  // NOVÝ STAV - Zobrazenie informácií o stanici
+  const renderStationInfoState = () => (
+    <div className="p-4 sm:p-6 pt-6 sm:pt-8">
+      {/* Header s ikonou a stavom */}
+      <div className="flex items-center justify-center mb-6">
+        <div className={`w-20 h-20 rounded-full flex items-center justify-center ${
+          stationInfo?.status === 'AVAILABLE' ? 'bg-[var(--secondary)]' : 'bg-[var(--warning)]'
+        }`}>
+          <PlugIcon />
+        </div>
+      </div>
+
+      {/* Stav stanice */}
+      <div className="text-center mb-6">
+        <span className={`inline-block px-4 py-1 rounded-full text-sm font-medium ${
+          stationInfo?.status === 'AVAILABLE'
+            ? 'bg-green-100 text-green-800'
+            : 'bg-yellow-100 text-yellow-800'
+        }`}>
+          {stationInfo?.status === 'AVAILABLE' ? 'Dostupná' : stationInfo?.status || 'Neznámy stav'}
+        </span>
+      </div>
+
+      {/* Názov stanice */}
+      <h2 className="text-xl font-bold text-center text-[var(--text-primary)] mb-2">
+        {stationInfo?.name || 'Nabíjacia stanica'}
+      </h2>
+
+      {/* Adresa */}
+      {stationInfo?.address && (
+        <p className="text-sm text-[var(--text-secondary)] text-center mb-6">
+          {stationInfo.address}
+        </p>
+      )}
+
+      {/* Informácie o stanici */}
+      <Card className="mb-6">
+        <CardContent>
+          <div className="space-y-4">
+            {/* Výkon */}
+            <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
+              <span className="text-[var(--text-secondary)]">Maximálny výkon</span>
+              <span className="font-semibold text-[var(--primary)]">
+                {stationInfo?.maxPower ? `${stationInfo.maxPower} kW` : '22 kW'}
+              </span>
+            </div>
+
+            {/* Typ konektora */}
+            <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
+              <span className="text-[var(--text-secondary)]">Typ konektora</span>
+              <span className="font-semibold">{stationInfo?.plugType || 'Type 2'}</span>
+            </div>
+
+            {/* Cena za kWh */}
+            <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
+              <span className="text-[var(--text-secondary)]">Cena za energiu</span>
+              <span className="font-semibold text-[var(--accent)]">
+                {stationInfo?.pricePerKwh?.toFixed(2) || '0.44'} €/kWh
+              </span>
+            </div>
+
+            {/* Cena za čas */}
+            <div className="flex justify-between items-center py-2">
+              <span className="text-[var(--text-secondary)]">Cena za čas</span>
+              <span className="font-semibold">0.00 €/hod</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tlačidlá */}
+      <div className="space-y-3">
+        <Button
+          onClick={confirmStartCharging}
+          fullWidth
+          size="lg"
+          disabled={stationInfo?.status !== 'AVAILABLE'}
+        >
+          Začať nabíjanie
+        </Button>
+        <Button onClick={handleNewSession} variant="outline" fullWidth>
+          Zrušiť
+        </Button>
+      </div>
+
+      {/* Upozornenie ak nie je dostupná */}
+      {stationInfo?.status !== 'AVAILABLE' && (
+        <p className="text-sm text-[var(--warning)] text-center mt-4">
+          Stanica momentálne nie je dostupná. Skúste neskôr.
+        </p>
+      )}
     </div>
   );
 
   const renderChargingState = () => (
     <div className="p-4 sm:p-6 pt-6 sm:pt-8">
-      {/* Status indicator */}
       <div className="flex items-center justify-center mb-8">
         <div className="relative">
           <div className="w-32 h-32 rounded-full bg-[var(--secondary)] flex items-center justify-center animate-pulse">
@@ -187,7 +285,6 @@ export default function ChargingPage() {
         {t('chargingInProgress')}
       </h2>
 
-      {/* Stats grid */}
       <div className="grid grid-cols-2 gap-4 sm:gap-5 mb-10">
         <Card className="text-center">
           <CardContent>
@@ -303,13 +400,14 @@ export default function ChargingPage() {
   return (
     <AppLayout
       header={
-        <PageHeader title={t('scanQr')} />
+        <PageHeader title={state === 'station_info' ? 'Nabíjacia stanica' : t('scanQr')} />
       }
     >
       <div className="max-w-lg mx-auto">
         {state === 'idle' && renderIdleState()}
         {state === 'scanning' && renderIdleState()}
         {state === 'connecting' && renderConnectingState()}
+        {state === 'station_info' && renderStationInfoState()}
         {state === 'charging' && renderChargingState()}
         {state === 'stopping' && renderStoppingState()}
         {state === 'completed' && renderCompletedState()}

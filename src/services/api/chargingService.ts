@@ -11,13 +11,25 @@ interface ActiveChargingResponse {
 }
 
 interface StartChargingResponse {
-  sessionId: string;
-  status: string;
+  sessionId?: string;
+  status?: string;
   message?: string;
   stationId?: string;
   connectorId?: string;
   startTime?: string;
   redirectUrl?: string;
+  originalUrl?: string;
+  station?: {
+    name?: string;
+    address?: string;
+    maxPower?: number | null;
+    plugType?: string;
+  };
+  pricing?: {
+    pricePerKwh?: number;
+    pricePerHour?: number;
+    currency?: string;
+  };
 }
 
 interface StopChargingResponse {
@@ -57,6 +69,34 @@ export async function getActiveCharging(
   } catch (error) {
     console.error('getActiveCharging error:', error);
     return null;
+  }
+}
+
+// Získanie informácií o stanici (bez spustenia nabíjania)
+export async function getStationInfo(
+  stationId: string,
+  connectorId: string,
+  originalUrl?: string
+): Promise<StartChargingResponse> {
+  try {
+    const response = await fetch('/api/charging/info', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ stationId, connectorId, originalUrl }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Nepodarilo sa načítať informácie o stanici');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('getStationInfo error:', error);
+    throw error;
   }
 }
 

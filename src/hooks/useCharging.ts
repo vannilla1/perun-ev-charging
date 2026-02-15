@@ -8,9 +8,10 @@ import {
   getSessionStatus,
   parseStationQRCode,
   formatDuration,
+  getStationInfo,
 } from '@/services/api/chargingService';
 
-export type ChargingState = 'idle' | 'scanning' | 'connecting' | 'charging' | 'stopping' | 'completed' | 'error';
+export type ChargingState = 'idle' | 'scanning' | 'connecting' | 'station_info' | 'charging' | 'stopping' | 'completed' | 'error';
 
 interface ChargingStats {
   power: number;
@@ -19,15 +20,29 @@ interface ChargingStats {
   cost: number;
 }
 
+interface StationInfo {
+  stationId: string;
+  connectorId: string;
+  name: string;
+  address: string;
+  maxPower: number | null;
+  plugType: string;
+  pricePerKwh: number;
+  status: string;
+  originalUrl?: string;
+}
+
 interface UseChargingResult {
   state: ChargingState;
   sessionId: string | null;
   stats: ChargingStats;
+  stationInfo: StationInfo | null;
   error: string | null;
   startScanning: () => void;
   stopScanning: () => void;
   handleQRScan: (data: string) => void;
   handleManualCode: (code: string) => void;
+  confirmStartCharging: () => void;
   stopSession: () => void;
   reset: () => void;
   formatDuration: typeof formatDuration;
@@ -38,6 +53,7 @@ export function useCharging(): UseChargingResult {
   const [state, setState] = useState<ChargingState>('idle');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [stationInfo, setStationInfo] = useState<StationInfo | null>(null);
   const [stats, setStats] = useState<ChargingStats>({
     power: 0,
     energy: 0,
@@ -45,18 +61,52 @@ export function useCharging(): UseChargingResult {
     cost: 0,
   });
 
+  // Mutation pre získanie info o stanici
+  const stationInfoMutation = useMutation({
+    mutationFn: ({ stationId, connectorId, originalUrl }: { stationId: string; connectorId: string; originalUrl?: string }) =>
+      getStationInfo(stationId, connectorId, originalUrl),
+    onSuccess: (data) => {
+      if (data.redirectUrl) {
+        // Ak API vráti redirect URL, presmerujeme na eCarUp
+        window.location.href = data.redirectUrl;
+        return;
+      }
+      setStationInfo({
+        stationId: data.stationId || '',
+        connectorId: data.connectorId || '',
+        name: data.station?.name || 'Neznáma stanica',
+        address: data.station?.address || '',
+        maxPower: data.station?.maxPower || null,
+        plugType: data.station?.plugType || 'Type 2',
+        pricePerKwh: data.pricing?.pricePerKwh || 0.44,
+        status: data.status || 'available',
+        originalUrl: data.originalUrl,
+      });
+      setState('station_info');
+      setError(null);
+    },
+    onError: (err) => {
+      setState('error');
+      setError(err instanceof Error ? err.message : 'Nepodarilo sa načítať informácie o stanici');
+    },
+  });
+
   // Mutation pre spustenie nabíjania
   const startMutation = useMutation({
     mutationFn: ({ stationId, connectorId, originalUrl }: { stationId: string; connectorId: string; originalUrl?: string }) =>
       startCharging(stationId, connectorId, originalUrl),
     onSuccess: (data) => {
-      // Ak API vráti redirect URL, presmerujeme na eCarUp
       if (data.redirectUrl) {
         window.location.href = data.redirectUrl;
         return;
       }
-      setSessionId(data.sessionId);
+      setSessionId(data.sessionId || null);
       setState('charging');
+      // Nastavíme počiatočný výkon
+      setStats(prev => ({
+        ...prev,
+        power: stationInfo?.maxPower || 22,
+      }));
       setError(null);
     },
     onError: (err) => {
@@ -89,7 +139,7 @@ export function useCharging(): UseChargingResult {
     queryKey: ['session', sessionId],
     queryFn: () => getSessionStatus(sessionId!),
     enabled: state === 'charging' && sessionId !== null,
-    refetchInterval: 2000, // Každé 2 sekundy
+    refetchInterval: 2000,
   });
 
   // Aktualizácia štatistík z pollingu
@@ -115,13 +165,13 @@ export function useCharging(): UseChargingResult {
           ...prev,
           duration: prev.duration + 1,
           energy: prev.energy + (prev.power / 3600),
-          cost: (prev.energy + (prev.power / 3600)) * 0.35,
+          cost: (prev.energy + (prev.power / 3600)) * (stationInfo?.pricePerKwh || 0.44),
         }));
       }, 1000);
     }
 
     return () => clearInterval(interval);
-  }, [state, sessionStatus]);
+  }, [state, sessionStatus, stationInfo?.pricePerKwh]);
 
   const startScanning = useCallback(() => {
     setState('scanning');
@@ -139,36 +189,47 @@ export function useCharging(): UseChargingResult {
 
     if (parsed) {
       setState('connecting');
-      // Simulácia pripojenia
+      // Získame info o stanici namiesto priameho štartu nabíjania
       setTimeout(() => {
-        startMutation.mutate({
+        stationInfoMutation.mutate({
           stationId: parsed.stationId,
           connectorId: parsed.connectorId || 'default',
           originalUrl: parsed.originalUrl,
         });
-      }, 1500);
+      }, 1000);
     } else {
       console.error('Failed to parse QR code:', data);
-      // Zobraz raw dáta pre debug
       const truncatedData = data.length > 100 ? data.substring(0, 100) + '...' : data;
       setError(`Neplatný QR kód. Data: "${truncatedData}"`);
       setState('error');
     }
-  }, [startMutation]);
+  }, [stationInfoMutation]);
 
   const handleManualCode = useCallback((code: string) => {
     if (code.length >= 4) {
       setState('connecting');
       setTimeout(() => {
-        startMutation.mutate({
+        stationInfoMutation.mutate({
           stationId: code,
           connectorId: 'default',
         });
-      }, 1500);
+      }, 1000);
     } else {
       setError('Kód musí mať aspoň 4 znaky');
     }
-  }, [startMutation]);
+  }, [stationInfoMutation]);
+
+  // Nová funkcia - používateľ potvrdzuje začatie nabíjania
+  const confirmStartCharging = useCallback(() => {
+    if (stationInfo) {
+      setState('connecting');
+      startMutation.mutate({
+        stationId: stationInfo.stationId,
+        connectorId: stationInfo.connectorId,
+        originalUrl: stationInfo.originalUrl,
+      });
+    }
+  }, [stationInfo, startMutation]);
 
   const stopSession = useCallback(() => {
     if (sessionId) {
@@ -180,6 +241,7 @@ export function useCharging(): UseChargingResult {
   const reset = useCallback(() => {
     setState('idle');
     setSessionId(null);
+    setStationInfo(null);
     setError(null);
     setStats({ power: 0, energy: 0, duration: 0, cost: 0 });
   }, []);
@@ -188,11 +250,13 @@ export function useCharging(): UseChargingResult {
     state,
     sessionId,
     stats,
+    stationInfo,
     error,
     startScanning,
     stopScanning,
     handleQRScan,
     handleManualCode,
+    confirmStartCharging,
     stopSession,
     reset,
     formatDuration,
