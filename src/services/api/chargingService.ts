@@ -139,47 +139,86 @@ export async function getSessionStatus(sessionId: string): Promise<SessionStatus
 // Parsovanie QR kódu stanice
 export function parseStationQRCode(qrData: string): { stationId: string; connectorId?: string } | null {
   try {
+    // Trim whitespace
+    const data = qrData.trim();
+
     // Formát 1: JSON objekt
-    if (qrData.startsWith('{')) {
-      const parsed = JSON.parse(qrData);
+    if (data.startsWith('{')) {
+      const parsed = JSON.parse(data);
       return {
         stationId: parsed.stationId || parsed.id,
         connectorId: parsed.connectorId,
       };
     }
 
-    // Formát 2: URL s parametrami
-    if (qrData.startsWith('http')) {
-      const url = new URL(qrData);
+    // Formát 2: eCarUp URL formáty
+    // https://admin.ecarup.com/charge/CH*ECUE83QKLG75LPX86ZDATKLZDXS633
+    // https://ecarup.com/charge/STATION_ID
+    // https://pay.ecarup.com/...
+    if (data.startsWith('http')) {
+      const url = new URL(data);
+
+      // eCarUp domény - extrahovať ID z path
+      if (url.hostname.includes('ecarup.com')) {
+        const pathParts = url.pathname.split('/').filter(Boolean);
+        // /charge/STATION_ID alebo /STATION_ID
+        if (pathParts.length >= 1) {
+          // Nájsť EVSE ID (začína na CH*, SK*, AT*, DE* atď.)
+          const evseId = pathParts.find(part => /^[A-Z]{2}\*/.test(part));
+          if (evseId) {
+            return { stationId: evseId };
+          }
+          // Alebo posledná časť path ako ID
+          const lastPart = pathParts[pathParts.length - 1];
+          if (lastPart && lastPart.length >= 4) {
+            return { stationId: lastPart };
+          }
+        }
+      }
+
+      // Generická URL s parametrami
       const stationId = url.searchParams.get('stationId') || url.searchParams.get('id');
       const connectorId = url.searchParams.get('connectorId');
       if (stationId) {
         return { stationId, connectorId: connectorId || undefined };
       }
+
+      return null;
     }
 
-    // Formát 3: eCarUp formát (ecarup://stationId/connectorId)
-    if (qrData.startsWith('ecarup://')) {
-      const parts = qrData.replace('ecarup://', '').split('/');
+    // Formát 3: eCarUp deep link (ecarup://stationId/connectorId)
+    if (data.startsWith('ecarup://')) {
+      const parts = data.replace('ecarup://', '').split('/');
       return {
         stationId: parts[0],
         connectorId: parts[1],
       };
     }
 
-    // Formát 4: Jednoduchý kód stanice (napr. "ST-12345")
-    if (/^[A-Z]{2,3}-\d{4,}$/i.test(qrData)) {
-      return { stationId: qrData.toUpperCase() };
+    // Formát 4: EVSE ID formát (CH*ECUE..., SK*..., AT*..., DE*...)
+    // Štandardný európsky formát pre nabíjacie stanice
+    if (/^[A-Z]{2}\*[A-Z0-9*]+$/i.test(data)) {
+      return { stationId: data.toUpperCase() };
     }
 
-    // Formát 5: Číslo stanice
-    if (/^\d{4,}$/.test(qrData)) {
-      return { stationId: qrData };
+    // Formát 5: Jednoduchý kód stanice (napr. "ST-12345")
+    if (/^[A-Z]{2,3}-\d{4,}$/i.test(data)) {
+      return { stationId: data.toUpperCase() };
     }
 
-    // Formát 6: Alfanumerický kód
-    if (/^[A-Z0-9]{4,}$/i.test(qrData)) {
-      return { stationId: qrData.toUpperCase() };
+    // Formát 6: Číslo stanice
+    if (/^\d{4,}$/.test(data)) {
+      return { stationId: data };
+    }
+
+    // Formát 7: Alfanumerický kód (min 4 znaky)
+    if (/^[A-Z0-9]{4,}$/i.test(data)) {
+      return { stationId: data.toUpperCase() };
+    }
+
+    // Formát 8: Akýkoľvek text dlhší ako 10 znakov - skúsime ako ID
+    if (data.length >= 10) {
+      return { stationId: data };
     }
 
     return null;

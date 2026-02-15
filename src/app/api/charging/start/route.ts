@@ -50,12 +50,59 @@ async function getAccessToken(): Promise<string | null> {
   }
 }
 
+// Funkcia na vyhľadanie stanice podľa EVSE ID (CH*ECUE...)
+async function findStationByEvseId(evseId: string, accessToken: string): Promise<string | null> {
+  try {
+    // Získame všetky stanice a hľadáme podľa EVSE ID v konektoroch
+    const response = await fetch(
+      `${ECARUP_API_BASE}/v1/stations?filter=all`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json',
+        },
+        cache: 'no-store',
+      }
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const stations = await response.json();
+
+    // Hľadáme stanicu kde konektor má EVSE ID
+    for (const station of stations) {
+      // Skontrolovať konektory
+      if (station.connectors) {
+        for (const connector of station.connectors) {
+          // EVSE ID môže byť v rôznych poliach
+          if (connector.evseId === evseId ||
+              connector.evseid === evseId ||
+              connector.id === evseId) {
+            return station.id;
+          }
+        }
+      }
+      // Alebo priamo na stanici
+      if (station.evseId === evseId || station.evseid === evseId) {
+        return station.id;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error finding station by EVSE ID:', error);
+    return null;
+  }
+}
+
 // POST /api/charging/start
 // Spustenie nabíjania na stanici
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { stationId, connectorId } = body;
+    let { stationId, connectorId } = body;
 
     if (!stationId) {
       return NextResponse.json(
@@ -73,9 +120,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Ak je to EVSE ID formát (CH*..., SK*..., atď.), skúsime ho preložiť
+    const isEvseId = /^[A-Z]{2}\*[A-Z0-9*]+$/i.test(stationId);
+    let resolvedStationId = stationId;
+
+    if (isEvseId) {
+      console.log(`Looking up EVSE ID: ${stationId}`);
+      const foundId = await findStationByEvseId(stationId, accessToken);
+      if (foundId) {
+        resolvedStationId = foundId;
+        console.log(`Resolved EVSE ID ${stationId} to station ID ${resolvedStationId}`);
+      } else {
+        // Ak nenájdeme, skúsime priamo s EVSE ID
+        console.log(`EVSE ID not found in lookup, trying direct: ${stationId}`);
+      }
+    }
+
     // 1. Najprv získame detail stanice pre overenie
     const stationResponse = await fetch(
-      `${ECARUP_API_BASE}/v1/station/${stationId}`,
+      `${ECARUP_API_BASE}/v1/station/${resolvedStationId}`,
       {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -119,7 +182,7 @@ export async function POST(request: NextRequest) {
     // 4. Skontrolujeme či už neprebieha nabíjanie
     try {
       const activeResponse = await fetch(
-        `${ECARUP_API_BASE}/v1/station/${stationId}/connectors/${connector.id}/active-charging`,
+        `${ECARUP_API_BASE}/v1/station/${resolvedStationId}/connectors/${connector.id}/active-charging`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -156,15 +219,16 @@ export async function POST(request: NextRequest) {
     // - Alebo eCarUp mobilnú aplikáciu
     // - Alebo platobný portál cez QR kód
 
-    const sessionId = `session-${Date.now()}-${stationId}-${connector.id}`;
+    const sessionId = `session-${Date.now()}-${resolvedStationId}-${connector.id}`;
 
     // Vrátime eCarUp payment URL ak existuje
-    const paymentUrl = stationData.paymentUrl || `https://ecarup.com/charge/${stationId}`;
+    const paymentUrl = stationData.paymentUrl || `https://ecarup.com/charge/${resolvedStationId}`;
 
     return NextResponse.json({
       success: true,
       sessionId,
-      stationId,
+      stationId: resolvedStationId,
+      originalStationId: stationId !== resolvedStationId ? stationId : undefined,
       connectorId: connector.id,
       connectorNumber: connector.number,
       status: 'pending_authorization',
