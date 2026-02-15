@@ -50,10 +50,10 @@ async function getAccessToken(): Promise<string | null> {
   }
 }
 
-// Funkcia na vyhľadanie stanice podľa EVSE ID (CH*ECUE...)
-async function findStationByEvseId(evseId: string, accessToken: string): Promise<string | null> {
+// Funkcia na vyhľadanie stanice podľa serial ID alebo EVSE ID
+async function findStationByIdentifier(identifier: string, accessToken: string): Promise<string | null> {
   try {
-    // Získame všetky stanice a hľadáme podľa EVSE ID v konektoroch
+    // Získame všetky stanice a hľadáme podľa rôznych identifikátorov
     const response = await fetch(
       `${ECARUP_API_BASE}/v1/stations?filter=all`,
       {
@@ -71,28 +71,32 @@ async function findStationByEvseId(evseId: string, accessToken: string): Promise
 
     const stations = await response.json();
 
-    // Hľadáme stanicu kde konektor má EVSE ID
+    // Hľadáme stanicu podľa rôznych identifikátorov
     for (const station of stations) {
+      // Priame zhody na stanici
+      if (station.id === identifier ||
+          station.serial === identifier ||
+          station.evseId === identifier ||
+          station.evseid === identifier) {
+        return station.id;
+      }
+
       // Skontrolovať konektory
       if (station.connectors) {
         for (const connector of station.connectors) {
-          // EVSE ID môže byť v rôznych poliach
-          if (connector.evseId === evseId ||
-              connector.evseid === evseId ||
-              connector.id === evseId) {
+          if (connector.id === identifier ||
+              connector.serial === identifier ||
+              connector.evseId === identifier ||
+              connector.evseid === identifier) {
             return station.id;
           }
         }
-      }
-      // Alebo priamo na stanici
-      if (station.evseId === evseId || station.evseid === evseId) {
-        return station.id;
       }
     }
 
     return null;
   } catch (error) {
-    console.error('Error finding station by EVSE ID:', error);
+    console.error('Error finding station by identifier:', error);
     return null;
   }
 }
@@ -120,19 +124,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ak je to EVSE ID formát (CH*..., SK*..., atď.), skúsime ho preložiť
-    const isEvseId = /^[A-Z]{2}\*[A-Z0-9*]+$/i.test(stationId);
+    // Skúsime nájsť stanicu podľa identifikátora (serial, EVSE ID, alebo priame ID)
     let resolvedStationId = stationId;
 
-    if (isEvseId) {
-      console.log(`Looking up EVSE ID: ${stationId}`);
-      const foundId = await findStationByEvseId(stationId, accessToken);
+    // Najprv skúsime priamy prístup k stanici
+    console.log(`Trying direct station lookup: ${stationId}`);
+    let stationFound = false;
+
+    try {
+      const directResponse = await fetch(
+        `${ECARUP_API_BASE}/v1/station/${stationId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept': 'application/json',
+          },
+          cache: 'no-store',
+        }
+      );
+      stationFound = directResponse.ok;
+    } catch {
+      stationFound = false;
+    }
+
+    // Ak priamy prístup nefunguje, skúsime vyhľadať podľa identifikátora
+    if (!stationFound) {
+      console.log(`Direct lookup failed, searching by identifier: ${stationId}`);
+      const foundId = await findStationByIdentifier(stationId, accessToken);
       if (foundId) {
         resolvedStationId = foundId;
-        console.log(`Resolved EVSE ID ${stationId} to station ID ${resolvedStationId}`);
+        console.log(`Resolved identifier ${stationId} to station ID ${resolvedStationId}`);
       } else {
-        // Ak nenájdeme, skúsime priamo s EVSE ID
-        console.log(`EVSE ID not found in lookup, trying direct: ${stationId}`);
+        console.log(`Station not found by identifier: ${stationId}`);
       }
     }
 
