@@ -44,17 +44,23 @@ function mapECarUpStation(station: ECarUpStation): ChargingStation {
   // Filtrovať stanice bez platných súradníc
   const hasValidLocation = station.latitude !== 0 && station.longitude !== 0;
 
+  // Stanica bez konektorov = offline
+  const hasConnectors = station.connectors && station.connectors.length > 0;
+
   // Skontrolovať či je stanica UNAVAILABLE (z API state)
   const isUnavailable = station.connectors?.some(c => c.state === 'UNAVAILABLE');
 
   // Určenie celkového statusu stanice na základe konektorov
   const hasAvailable = station.connectors?.some(c => c.state === 'AVAILABLE' || c.status === 'Available');
-  const allOffline = station.connectors?.every(c => c.status === 'Offline');
+  const allOffline = station.connectors?.every(c => c.status === 'Offline' || c.state === 'UNAVAILABLE');
 
-  let status: ChargingStation['status'] = 'available';
-  if (isUnavailable) status = 'offline';  // UNAVAILABLE = offline (šedá)
+  // Default je offline - stanica musí explicitne mať dostupný konektor
+  let status: ChargingStation['status'] = 'offline';
+  if (!hasConnectors) status = 'offline';  // Bez konektorov = offline
+  else if (isUnavailable) status = 'offline';  // UNAVAILABLE = offline (šedá)
   else if (allOffline) status = 'offline';
-  else if (!hasAvailable && station.connectors?.length > 0) status = 'occupied';
+  else if (hasAvailable) status = 'available';  // Aspoň jeden konektor dostupný
+  else status = 'occupied';  // Má konektory ale žiadny nie je available
 
   return {
     id: station.id,
@@ -113,7 +119,8 @@ function mapConnectorStatus(status: string): ChargingStation['connectors'][0]['s
     'Faulted': 'offline',
     'FAULTED': 'offline',
   };
-  return statusMap[status] || 'available';
+  // Default je offline namiesto available - bezpečnejšie
+  return statusMap[status] || 'offline';
 }
 
 // isDemoMode je importovaný z client.ts
