@@ -33,17 +33,35 @@ export function Card({
   return (
     <div
       className={`
-        bg-[var(--surface)] rounded-[var(--border-radius)]
+        rounded-[var(--border-radius)]
         ${paddingStyles[padding]}
-        ${shadow ? 'shadow-[var(--shadow)]' : ''}
         ${hover ? 'card-hover cursor-pointer' : ''}
         ${className}
       `}
-      style={style}
+      style={{
+        background: 'var(--surface-card)',
+        border: '1px solid var(--border)',
+        boxShadow: shadow ? '0 2px 12px rgba(0,0,0,0.4)' : 'none',
+        position: 'relative',
+        overflow: 'hidden',
+        ...style,
+      }}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
     >
+      {/* Subtle gradient shimmer top-left corner */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '1px',
+          background: 'linear-gradient(90deg, rgba(0,212,255,0.15) 0%, transparent 60%)',
+          pointerEvents: 'none',
+        }}
+      />
       {children}
     </div>
   );
@@ -60,9 +78,9 @@ export function CardHeader({ title, subtitle, action, className = '' }: CardHead
   return (
     <div className={`flex items-start justify-between mb-3 ${className}`}>
       <div>
-        <h3 className="text-lg font-semibold text-[var(--text-primary)]">{title}</h3>
+        <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{title}</h3>
         {subtitle && (
-          <p className="text-sm text-[var(--text-secondary)] mt-0.5">{subtitle}</p>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>
         )}
       </div>
       {action && <div>{action}</div>}
@@ -86,7 +104,10 @@ interface CardFooterProps {
 
 export function CardFooter({ children, className = '' }: CardFooterProps) {
   return (
-    <div className={`mt-4 pt-4 border-t border-[var(--border)] ${className}`}>
+    <div
+      className={`mt-4 pt-4 ${className}`}
+      style={{ borderTop: '1px solid var(--border)' }}
+    >
       {children}
     </div>
   );

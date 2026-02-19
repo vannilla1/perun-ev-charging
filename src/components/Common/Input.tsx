@@ -33,14 +33,15 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-sm font-medium text-[var(--text-primary)] mb-1.5"
+            className="block text-xs font-medium mb-1.5 tracking-wide uppercase"
+            style={{ color: 'var(--text-muted)', letterSpacing: '0.06em' }}
           >
             {label}
           </label>
         )}
         <div className="relative">
           {leftIcon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
+            <div className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
               {leftIcon}
             </div>
           )}
@@ -48,30 +49,54 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             className={`
-              w-full px-4 py-2.5
-              bg-[var(--surface)] border rounded-[var(--border-radius-sm)]
-              text-[var(--text-primary)] placeholder-[var(--text-muted)]
+              w-full px-4 py-3
+              rounded-[var(--border-radius-sm)]
+              text-sm
               transition-all duration-200
-              focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent
-              disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-[var(--surface-secondary)]
+              focus:outline-none
+              disabled:opacity-40 disabled:cursor-not-allowed
               ${leftIcon ? 'pl-10' : ''}
               ${rightIcon ? 'pr-10' : ''}
-              ${error ? 'border-[var(--error)] focus:ring-[var(--error)]' : 'border-[var(--border)]'}
               ${className}
             `}
+            style={{
+              background: 'rgba(0, 212, 255, 0.04)',
+              border: error
+                ? '1.5px solid rgba(255, 61, 113, 0.5)'
+                : '1.5px solid rgba(0, 212, 255, 0.12)',
+              color: 'var(--text-primary)',
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.border = error
+                ? '1.5px solid rgba(255, 61, 113, 0.7)'
+                : '1.5px solid rgba(0, 212, 255, 0.5)';
+              e.currentTarget.style.boxShadow = error
+                ? '0 0 0 3px rgba(255, 61, 113, 0.1)'
+                : '0 0 0 3px rgba(0, 212, 255, 0.08)';
+              e.currentTarget.style.background = 'rgba(0, 212, 255, 0.06)';
+              if (props.onFocus) props.onFocus(e);
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.border = error
+                ? '1.5px solid rgba(255, 61, 113, 0.5)'
+                : '1.5px solid rgba(0, 212, 255, 0.12)';
+              e.currentTarget.style.boxShadow = '';
+              e.currentTarget.style.background = 'rgba(0, 212, 255, 0.04)';
+              if (props.onBlur) props.onBlur(e);
+            }}
             {...props}
           />
           {rightIcon && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]">
+            <div className="absolute right-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
               {rightIcon}
             </div>
           )}
         </div>
         {error && (
-          <p className="mt-1.5 text-sm text-[var(--error)]">{error}</p>
+          <p className="mt-1.5 text-xs" style={{ color: 'var(--error)' }}>{error}</p>
         )}
         {helperText && !error && (
-          <p className="mt-1.5 text-sm text-[var(--text-secondary)]">{helperText}</p>
+          <p className="mt-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>{helperText}</p>
         )}
       </div>
     );
@@ -108,7 +133,8 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
         {label && (
           <label
             htmlFor={textareaId}
-            className="block text-sm font-medium text-[var(--text-primary)] mb-1.5"
+            className="block text-xs font-medium mb-1.5 uppercase tracking-wide"
+            style={{ color: 'var(--text-muted)', letterSpacing: '0.06em' }}
           >
             {label}
           </label>
@@ -118,22 +144,45 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
           id={textareaId}
           rows={rows}
           className={`
-            w-full px-4 py-2.5
-            bg-[var(--surface)] border rounded-[var(--border-radius-sm)]
-            text-[var(--text-primary)] placeholder-[var(--text-muted)]
+            w-full px-4 py-3
+            rounded-[var(--border-radius-sm)]
+            text-sm
             transition-all duration-200 resize-none
-            focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent
-            disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-[var(--surface-secondary)]
-            ${error ? 'border-[var(--error)] focus:ring-[var(--error)]' : 'border-[var(--border)]'}
+            focus:outline-none
+            disabled:opacity-40 disabled:cursor-not-allowed
+            ${error ? 'border-[var(--error)]' : ''}
             ${className}
           `}
+          style={{
+            background: 'rgba(0, 212, 255, 0.04)',
+            border: error
+              ? '1.5px solid rgba(255, 61, 113, 0.5)'
+              : '1.5px solid rgba(0, 212, 255, 0.12)',
+            color: 'var(--text-primary)',
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.border = error
+              ? '1.5px solid rgba(255, 61, 113, 0.7)'
+              : '1.5px solid rgba(0, 212, 255, 0.5)';
+            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0, 212, 255, 0.08)';
+            e.currentTarget.style.background = 'rgba(0, 212, 255, 0.06)';
+            if (props.onFocus) props.onFocus(e);
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.border = error
+              ? '1.5px solid rgba(255, 61, 113, 0.5)'
+              : '1.5px solid rgba(0, 212, 255, 0.12)';
+            e.currentTarget.style.boxShadow = '';
+            e.currentTarget.style.background = 'rgba(0, 212, 255, 0.04)';
+            if (props.onBlur) props.onBlur(e);
+          }}
           {...props}
         />
         {error && (
-          <p className="mt-1.5 text-sm text-[var(--error)]">{error}</p>
+          <p className="mt-1.5 text-xs" style={{ color: 'var(--error)' }}>{error}</p>
         )}
         {helperText && !error && (
-          <p className="mt-1.5 text-sm text-[var(--text-secondary)]">{helperText}</p>
+          <p className="mt-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>{helperText}</p>
         )}
       </div>
     );
