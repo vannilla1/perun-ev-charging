@@ -19,17 +19,17 @@ interface StripeCardFormProps {
 const CARD_ELEMENT_OPTIONS = {
   style: {
     base: {
-      color: '#E8EDF5',
-      fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+      color: '#1a1a1a',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
       fontSmoothing: 'antialiased',
       fontSize: '16px',
       '::placeholder': {
-        color: '#4A5E7A',
+        color: '#9ca3af',
       },
     },
     invalid: {
-      color: '#FF3D71',
-      iconColor: '#FF3D71',
+      color: '#ef4444',
+      iconColor: '#ef4444',
     },
   },
 };
@@ -85,7 +85,7 @@ export function StripeCardForm({ clientSecret, onSuccess, onCancel }: StripeCard
         <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
           Číslo karty
         </label>
-        <div className="stripe-element-dark">
+        <div className="p-3 border border-[var(--border)] rounded-xl bg-white focus-within:border-[var(--perun-blue)] focus-within:ring-2 focus-within:ring-[var(--perun-blue)]/20 transition-all">
           <CardNumberElement options={CARD_ELEMENT_OPTIONS} />
         </div>
       </div>
@@ -95,7 +95,7 @@ export function StripeCardForm({ clientSecret, onSuccess, onCancel }: StripeCard
           <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
             Platnosť
           </label>
-          <div className="stripe-element-dark">
+          <div className="p-3 border border-[var(--border)] rounded-xl bg-white focus-within:border-[var(--perun-blue)] focus-within:ring-2 focus-within:ring-[var(--perun-blue)]/20 transition-all">
             <CardExpiryElement options={CARD_ELEMENT_OPTIONS} />
           </div>
         </div>
@@ -103,15 +103,15 @@ export function StripeCardForm({ clientSecret, onSuccess, onCancel }: StripeCard
           <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
             CVC
           </label>
-          <div className="stripe-element-dark">
+          <div className="p-3 border border-[var(--border)] rounded-xl bg-white focus-within:border-[var(--perun-blue)] focus-within:ring-2 focus-within:ring-[var(--perun-blue)]/20 transition-all">
             <CardCvcElement options={CARD_ELEMENT_OPTIONS} />
           </div>
         </div>
       </div>
 
       {error && (
-        <div className="auth-error" style={{ marginBottom: '16px' }}>
-          {error}
+        <div className="p-3 bg-red-50 border border-red-200 rounded-xl mb-4">
+          <p className="text-sm text-red-600">{error}</p>
         </div>
       )}
 

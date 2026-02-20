@@ -242,10 +242,10 @@ export default function ChargingPage() {
 
       {/* Stav stanice */}
       <div className="text-center mb-6">
-        <span className={`inline-block px-4 py-1.5 rounded-full text-sm font-medium ${
+        <span className={`inline-block px-4 py-1 rounded-full text-sm font-medium ${
           stationInfo?.status === 'AVAILABLE'
-            ? 'status-badge-available'
-            : 'status-badge-occupied'
+            ? 'bg-green-100 text-green-800'
+            : 'bg-yellow-100 text-yellow-800'
         }`}>
           {stationInfo?.status === 'AVAILABLE' ? 'Dostupná' : stationInfo?.status || 'Neznámy stav'}
         </span>
@@ -370,18 +370,14 @@ export default function ChargingPage() {
           </div>
 
           {/* Pre-authorization Info */}
-          <div className="info-box-blue">
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(0, 212, 255, 0.1)', color: 'var(--primary)' }}>
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-              </div>
+              <div className="text-2xl">💳</div>
               <div>
-                <h4 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Predautorizácia</h4>
-                <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                <h4 className="font-semibold text-blue-900">Predautorizácia</h4>
+                <p className="text-sm text-blue-700 mt-1">
                   Na vašej karte bude dočasne zablokovaná suma{' '}
-                  <strong style={{ color: 'var(--primary)' }}>{preAuthAmount.toFixed(2)} EUR</strong>.
+                  <strong>{preAuthAmount.toFixed(2)} EUR</strong>.
                   Po ukončení nabíjania bude strhnutá len skutočná suma.
                 </p>
               </div>
@@ -456,16 +452,16 @@ export default function ChargingPage() {
   );
 
   const renderChargingState = () => (
-    <div className="p-4 sm:p-6 pt-6 sm:pt-8 animate-state-transition">
+    <div className="p-4 sm:p-6 pt-6 sm:pt-8">
       <div className="flex items-center justify-center mb-8">
         <div className="relative">
-          <div className="w-32 h-32 rounded-full flex items-center justify-center animate-charging-pulse" style={{ background: 'linear-gradient(135deg, #00FF88, #00CC6A)' }}>
-            <div style={{ color: '#080C14' }}>
+          <div className="w-32 h-32 rounded-full bg-[var(--secondary)] flex items-center justify-center animate-pulse">
+            <div className="text-white">
               <BoltIcon />
             </div>
           </div>
-          <div className="absolute -top-2 -right-2 rounded-full p-1" style={{ background: 'var(--surface-card)', boxShadow: '0 0 15px rgba(0, 255, 136, 0.3)' }}>
-            <div className="w-4 h-4 rounded-full animate-ping" style={{ background: 'var(--secondary)' }} />
+          <div className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-lg">
+            <div className="w-4 h-4 rounded-full bg-[var(--secondary)] animate-ping" />
           </div>
         </div>
       </div>
@@ -476,9 +472,9 @@ export default function ChargingPage() {
 
       {/* Guest info banner */}
       {isGuest && (
-        <div className="info-box-blue" style={{ marginBottom: '24px', padding: '12px 16px' }}>
-          <p className="text-sm text-center" style={{ color: 'var(--text-secondary)' }}>
-            Predautorizácia: <span style={{ color: 'var(--primary)', fontFamily: "'Space Mono', monospace" }}>{preAuthAmount.toFixed(2)} EUR</span> | Po nabíjaní bude strhnutá skutočná suma
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6">
+          <p className="text-sm text-blue-800 text-center">
+            Predautorizácia: {preAuthAmount.toFixed(2)} EUR | Po nabíjaní bude strhnutá skutočná suma
           </p>
         </div>
       )}
@@ -547,13 +543,10 @@ export default function ChargingPage() {
   );
 
   const renderCompletedState = () => (
-    <div className="p-4 sm:p-6 pt-6 sm:pt-8 animate-state-transition">
+    <div className="p-4 sm:p-6 pt-6 sm:pt-8">
       <div className="flex items-center justify-center mb-8">
-        <div
-          className="w-24 h-24 rounded-full flex items-center justify-center animate-success-pop"
-          style={{ background: 'linear-gradient(135deg, #00FF88, #00CC6A)', boxShadow: '0 0 40px rgba(0, 255, 136, 0.3)' }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ color: '#080C14' }}>
+        <div className="w-24 h-24 rounded-full bg-[var(--secondary)] flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
@@ -564,9 +557,9 @@ export default function ChargingPage() {
       </h2>
 
       {isGuest && (
-        <div className="info-box-green" style={{ marginBottom: '24px' }}>
-          <p className="text-sm text-center" style={{ color: 'var(--text-secondary)' }}>
-            Potvrdenie bolo odoslané na: <span style={{ color: 'var(--secondary)' }}>{guestEmail}</span>
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-6">
+          <p className="text-sm text-green-800 text-center">
+            Potvrdenie bolo odoslané na: {guestEmail}
           </p>
         </div>
       )}

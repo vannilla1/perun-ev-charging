@@ -29,17 +29,17 @@ interface GuestPaymentFormProps {
 const CARD_ELEMENT_OPTIONS = {
   style: {
     base: {
-      color: '#E8EDF5',
-      fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+      color: '#1a1a1a',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
       fontSmoothing: 'antialiased',
       fontSize: '16px',
       '::placeholder': {
-        color: '#4A5E7A',
+        color: '#9ca3af',
       },
     },
     invalid: {
-      color: '#FF3D71',
-      iconColor: '#FF3D71',
+      color: '#ef4444',
+      iconColor: '#ef4444',
     },
   },
 };
@@ -198,18 +198,14 @@ export function GuestPaymentForm({
       </div>
 
       {/* Pre-authorization Info */}
-      <div className="info-box-blue rounded-2xl p-4">
+      <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
         <div className="flex items-start gap-3">
-          <div className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0, 212, 255, 0.15)', color: '#00D4FF' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
-          </div>
+          <div className="text-2xl">💳</div>
           <div>
-            <h4 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Predautorizácia</h4>
-            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+            <h4 className="font-semibold text-blue-900">Predautorizácia</h4>
+            <p className="text-sm text-blue-700 mt-1">
               Na vašej karte bude dočasne zablokovaná suma{' '}
-              <strong style={{ color: 'var(--primary)' }}>{preAuthAmount.toFixed(2)} EUR</strong>.
+              <strong>{preAuthAmount.toFixed(2)} EUR</strong>.
               Po ukončení nabíjania bude strhnutá len skutočná suma.
             </p>
           </div>
@@ -255,14 +251,14 @@ export function GuestPaymentForm({
             }}
             onBlur={() => validateEmail(email)}
             placeholder="vas@email.sk"
-            className="auth-input"
-            style={{
-              padding: '12px 14px',
-              ...(emailError ? { borderColor: 'rgba(255, 61, 113, 0.4)' } : {}),
-            }}
+            className={`w-full p-3 border rounded-xl bg-white focus:outline-none focus:ring-2 transition-all ${
+              emailError
+                ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                : 'border-[var(--border)] focus:border-[var(--perun-blue)] focus:ring-[var(--perun-blue)]/20'
+            }`}
           />
           {emailError && (
-            <p className="text-sm mt-1" style={{ color: '#FF3D71' }}>{emailError}</p>
+            <p className="text-sm text-red-600 mt-1">{emailError}</p>
           )}
         </div>
 
@@ -271,7 +267,7 @@ export function GuestPaymentForm({
           <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
             Číslo karty
           </label>
-          <div className="stripe-element-dark">
+          <div className="p-3 border border-[var(--border)] rounded-xl bg-white focus-within:border-[var(--perun-blue)] focus-within:ring-2 focus-within:ring-[var(--perun-blue)]/20 transition-all">
             <CardNumberElement options={CARD_ELEMENT_OPTIONS} />
           </div>
         </div>
@@ -282,7 +278,7 @@ export function GuestPaymentForm({
             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
               Platnosť
             </label>
-            <div className="stripe-element-dark">
+            <div className="p-3 border border-[var(--border)] rounded-xl bg-white focus-within:border-[var(--perun-blue)] focus-within:ring-2 focus-within:ring-[var(--perun-blue)]/20 transition-all">
               <CardExpiryElement options={CARD_ELEMENT_OPTIONS} />
             </div>
           </div>
@@ -290,7 +286,7 @@ export function GuestPaymentForm({
             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
               CVC
             </label>
-            <div className="stripe-element-dark">
+            <div className="p-3 border border-[var(--border)] rounded-xl bg-white focus-within:border-[var(--perun-blue)] focus-within:ring-2 focus-within:ring-[var(--perun-blue)]/20 transition-all">
               <CardCvcElement options={CARD_ELEMENT_OPTIONS} />
             </div>
           </div>
@@ -298,8 +294,8 @@ export function GuestPaymentForm({
 
         {/* Error */}
         {error && (
-          <div className="auth-error" style={{ marginBottom: '16px' }}>
-            {error}
+          <div className="p-3 bg-red-50 border border-red-200 rounded-xl mb-4">
+            <p className="text-sm text-red-600">{error}</p>
           </div>
         )}
 

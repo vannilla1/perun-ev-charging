@@ -18,7 +18,7 @@ const BackIcon = () => (
 );
 
 const CheckIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ color: 'var(--secondary)' }}>
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-[var(--perun-green)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
   </svg>
 );
@@ -34,18 +34,33 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setError(null);
 
-    if (!email.trim()) { setError('Zadajte e-mailovú adresu'); return; }
-    if (!email.includes('@')) { setError('Neplatná e-mailová adresa'); return; }
+    if (!email.trim()) {
+      setError('Zadajte e-mailovú adresu');
+      return;
+    }
+
+    if (!email.includes('@')) {
+      setError('Neplatná e-mailová adresa');
+      return;
+    }
 
     setIsLoading(true);
+
     try {
       const response = await fetch('/api/auth/forgot-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ email }),
       });
+
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Nepodarilo sa odoslať žiadosť');
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Nepodarilo sa odoslať žiadosť');
+      }
+
       setIsSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Nepodarilo sa odoslať žiadosť');
@@ -56,57 +71,51 @@ export default function ForgotPasswordPage() {
 
   if (isSubmitted) {
     return (
-      <div className="auth-page flex flex-col">
+      <div className="min-h-screen bg-gradient-to-b from-white to-[var(--surface-secondary)] flex flex-col">
         <div style={{ padding: '24px 16px 0 16px' }}>
           <button
             onClick={() => router.push('/login')}
-            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-full transition-colors flex items-center justify-center"
-            style={{ width: '44px', height: '44px', background: 'rgba(0, 212, 255, 0.04)' }}
-            aria-label="Späť"
+            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-full hover:bg-[var(--surface-secondary)] transition-colors flex items-center justify-center"
+            style={{ width: '44px', height: '44px' }}
           >
             <BackIcon />
           </button>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center animate-page-enter" style={{ padding: '16px 16px 32px 16px' }}>
+        <div
+          className="flex-1 flex flex-col items-center justify-center"
+          style={{ padding: '16px 16px 32px 16px' }}
+        >
           <div className="w-full max-w-sm sm:max-w-md text-center">
-            <div className="auth-card" style={{ padding: '48px 24px' }}>
-              <div className="animate-success-pop" style={{ marginBottom: '24px' }}>
-                <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
-                  style={{
-                    background: 'rgba(0, 255, 136, 0.1)',
-                    boxShadow: '0 0 30px rgba(0, 255, 136, 0.15)',
-                  }}
-                >
-                  <CheckIcon />
-                </div>
+            <div
+              className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-[var(--border-light)]"
+              style={{ padding: '48px 24px' }}
+            >
+              <div style={{ marginBottom: '24px' }}>
+                <CheckIcon />
               </div>
-              <h1 className="text-xl sm:text-2xl font-bold" style={{ marginBottom: '12px', color: 'var(--text-primary)' }}>
+              <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]" style={{ marginBottom: '12px' }}>
                 Email odoslaný
               </h1>
-              <p className="text-sm sm:text-base" style={{ marginBottom: '32px', color: 'var(--text-secondary)' }}>
-                Ak existuje účet s emailom <strong style={{ color: 'var(--primary)' }}>{email}</strong>, poslali sme vám inštrukcie na obnovenie hesla.
+              <p className="text-sm sm:text-base text-[var(--text-secondary)]" style={{ marginBottom: '32px' }}>
+                Ak existuje účet s emailom <strong>{email}</strong>, poslali sme vám inštrukcie na obnovenie hesla.
               </p>
               <button
                 onClick={() => router.push('/login')}
-                className="w-full py-3.5 sm:py-4 rounded-[var(--border-radius)] text-sm sm:text-base font-semibold transition-all btn-hover-primary"
-                style={{
-                  background: 'linear-gradient(135deg, #00D4FF 0%, #0088CC 100%)',
-                  color: '#080C14',
-                  boxShadow: '0 4px 20px -2px rgba(0, 212, 255, 0.35)',
-                }}
+                className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-[var(--perun-blue)] to-[var(--perun-blue-dark)] text-white rounded-xl sm:rounded-2xl text-sm sm:text-base font-semibold shadow-lg hover:shadow-xl transition-all"
               >
                 Späť na prihlásenie
               </button>
             </div>
 
-            <p className="text-sm" style={{ marginTop: '24px', color: 'var(--text-muted)' }}>
+            <p
+              className="text-sm text-[var(--text-muted)]"
+              style={{ marginTop: '24px' }}
+            >
               Neprišiel email? Skontrolujte spam alebo{' '}
               <button
                 onClick={() => setIsSubmitted(false)}
-                className="font-medium transition-colors"
-                style={{ color: 'var(--primary)' }}
+                className="text-[var(--perun-blue)] font-medium hover:text-[var(--perun-blue-dark)] transition-colors"
               >
                 skúste znova
               </button>
@@ -120,19 +129,24 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="auth-page flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-white to-[var(--surface-secondary)] flex flex-col">
+      {/* Header s back button */}
       <div style={{ padding: '24px 16px 0 16px' }}>
         <button
           onClick={() => router.back()}
-          className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-full transition-colors flex items-center justify-center"
-          style={{ width: '44px', height: '44px', background: 'rgba(0, 212, 255, 0.04)' }}
-          aria-label="Späť"
+          className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-full hover:bg-[var(--surface-secondary)] transition-colors flex items-center justify-center"
+          style={{ width: '44px', height: '44px' }}
         >
           <BackIcon />
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center animate-page-enter" style={{ padding: '16px 16px 32px 16px' }}>
+      {/* Content */}
+      <div
+        className="flex-1 flex flex-col items-center justify-center"
+        style={{ padding: '16px 16px 32px 16px' }}
+      >
+        {/* Logo */}
         <div className="text-center" style={{ marginBottom: '40px' }}>
           <Image
             src="/images/perun-logo.png"
@@ -144,49 +158,60 @@ export default function ForgotPasswordPage() {
             unoptimized
             priority
           />
-          <h1 className="text-xl sm:text-2xl font-bold" style={{ marginBottom: '8px', color: 'var(--text-primary)' }}>
+          <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]" style={{ marginBottom: '8px' }}>
             Zabudnuté heslo
           </h1>
-          <p className="text-sm sm:text-base" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-sm sm:text-base text-[var(--text-secondary)]">
             Zadajte email a pošleme vám inštrukcie
           </p>
         </div>
 
+        {/* Form Card */}
         <div className="w-full max-w-sm sm:max-w-md">
-          <div className="auth-card" style={{ padding: '24px' }}>
+          <div
+            className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-[var(--border-light)]"
+            style={{ padding: '24px' }}
+          >
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {error && <div className="auth-error">{error}</div>}
+              {error && (
+                <div className="p-3 sm:p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                  {error}
+                </div>
+              )}
 
+              {/* Email Input */}
               <div>
-                <label className="block text-sm font-medium mb-1.5 sm:mb-2" style={{ color: 'var(--text-secondary)' }}>
+                <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5 sm:mb-2">
                   E-mailová adresa
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 flex items-center pointer-events-none" style={{ paddingLeft: '14px' }}>
+                  <div
+                    className="absolute inset-y-0 left-0 flex items-center pointer-events-none"
+                    style={{ paddingLeft: '14px' }}
+                  >
                     <EmailIcon />
                   </div>
                   <input
                     type="email"
                     placeholder="vas@email.sk"
                     value={email}
-                    onChange={(e) => { setEmail(e.target.value); if (error) setError(null); }}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (error) setError(null);
+                    }}
                     autoComplete="email"
                     disabled={isLoading}
-                    className="auth-input"
+                    className="w-full bg-[var(--surface-secondary)] border border-[var(--border)] rounded-xl sm:rounded-2xl text-sm sm:text-base text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--perun-blue)] focus:border-transparent transition-all disabled:opacity-50"
                     style={{ paddingLeft: '44px', paddingRight: '14px', paddingTop: '12px', paddingBottom: '12px' }}
                   />
                 </div>
               </div>
 
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 sm:py-4 rounded-[var(--border-radius)] text-sm sm:text-base font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 btn-hover-primary"
-                style={{
-                  background: 'linear-gradient(135deg, #00D4FF 0%, #0088CC 100%)',
-                  color: '#080C14',
-                  boxShadow: '0 4px 20px -2px rgba(0, 212, 255, 0.35)',
-                }}
+                className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-[var(--perun-blue)] to-[var(--perun-blue-dark)] text-white rounded-xl sm:rounded-2xl text-sm sm:text-base font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>
@@ -203,13 +228,20 @@ export default function ForgotPasswordPage() {
             </form>
           </div>
 
-          <p className="text-center text-sm sm:text-base" style={{ marginTop: '32px', color: 'var(--text-secondary)' }}>
+          {/* Back to Login */}
+          <p
+            className="text-center text-sm sm:text-base text-[var(--text-secondary)]"
+            style={{ marginTop: '32px' }}
+          >
             Spomenuli ste si?{' '}
-            <Link href="/login" className="font-semibold transition-colors" style={{ color: 'var(--primary)' }}>Prihlásiť sa</Link>
+            <Link href="/login" className="text-[var(--perun-blue)] font-semibold hover:text-[var(--perun-blue-dark)] transition-colors">
+              Prihlásiť sa
+            </Link>
           </p>
         </div>
       </div>
 
+      {/* Footer gradient line */}
       <div className="h-1 bg-gradient-to-r from-[var(--perun-blue)] via-[var(--perun-green)] to-[var(--perun-orange)]" />
     </div>
   );
