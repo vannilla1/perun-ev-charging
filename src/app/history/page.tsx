@@ -204,18 +204,10 @@ export default function HistoryPage() {
             sessions.map((session) => (
               <div
                 key={session.id}
-                className="rounded-xl overflow-hidden cursor-pointer transition-all duration-200"
+                className="rounded-xl overflow-hidden cursor-pointer session-card-hover"
                 style={{
                   background: 'var(--surface-card)',
                   border: '1px solid var(--border)',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(0, 212, 255, 0.25)';
-                  (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border)';
-                  (e.currentTarget as HTMLDivElement).style.transform = '';
                 }}
               >
                 {/* Left color bar based on cost */}

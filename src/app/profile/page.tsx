@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { AppLayout, PageHeader } from '@/components/Layout';
 import { Button } from '@/components/Common';
 import { useAuth } from '@/contexts';
+import { useHistory } from '@/hooks';
 
 interface MenuItemProps {
   icon: React.ReactNode;
@@ -51,24 +52,18 @@ const MenuItem = ({ icon, label, value, onClick, danger, href, accent }: MenuIte
     </>
   );
 
-  const baseClass = "w-full flex items-center justify-between p-3.5 transition-all duration-200";
-
-  const handleHover = (e: React.MouseEvent<HTMLElement>, entering: boolean) => {
-    (e.currentTarget as HTMLElement).style.background = entering
-      ? danger ? 'rgba(255, 61, 113, 0.05)' : 'rgba(0, 212, 255, 0.04)'
-      : 'transparent';
-  };
+  const baseClass = `w-full flex items-center justify-between p-3.5 ${danger ? 'menu-item-hover-danger' : 'menu-item-hover'}`;
 
   if (href) {
     return (
-      <Link href={href} className={baseClass} onMouseEnter={(e) => handleHover(e, true)} onMouseLeave={(e) => handleHover(e, false)}>
+      <Link href={href} className={baseClass}>
         {content}
       </Link>
     );
   }
 
   return (
-    <button onClick={onClick} className={baseClass} onMouseEnter={(e) => handleHover(e, true)} onMouseLeave={(e) => handleHover(e, false)}>
+    <button onClick={onClick} className={baseClass}>
       {content}
     </button>
   );
@@ -143,16 +138,11 @@ export default function ProfilePage() {
   const t = useTranslations('profile');
   const router = useRouter();
   const { user, isLoggedIn, isLoading, logout } = useAuth();
+  const { stats } = useHistory('all');
 
   const handleLogout = () => {
     logout();
     router.push('/');
-  };
-
-  const mockStats = {
-    totalCharges: 23,
-    totalEnergy: 428,
-    totalSpent: 85,
   };
 
   if (isLoading) {
@@ -284,9 +274,9 @@ export default function ProfilePage() {
           </p>
           <div className="grid grid-cols-3 gap-4">
             {[
-              { value: mockStats.totalCharges, label: t('totalCharges'), unit: '', color: '#00FF88', glow: 'rgba(0,255,136,0.12)', Icon: BoltIcon },
-              { value: mockStats.totalEnergy, label: 'Energia', unit: 'kWh', color: '#00D4FF', glow: 'rgba(0,212,255,0.12)', Icon: TrendIcon },
-              { value: mockStats.totalSpent, label: t('totalSpent'), unit: '€', color: '#FF8C00', glow: 'rgba(255,140,0,0.12)', Icon: EuroIcon },
+              { value: stats.totalSessions, label: t('totalCharges'), unit: '', color: '#00FF88', glow: 'rgba(0,255,136,0.12)', Icon: BoltIcon },
+              { value: stats.totalEnergy.toFixed(1), label: 'Energia', unit: 'kWh', color: '#00D4FF', glow: 'rgba(0,212,255,0.12)', Icon: TrendIcon },
+              { value: stats.totalCost.toFixed(2), label: t('totalSpent'), unit: '€', color: '#FF8C00', glow: 'rgba(255,140,0,0.12)', Icon: EuroIcon },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <div

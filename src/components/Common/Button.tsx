@@ -51,6 +51,14 @@ const variantConfig: Record<ButtonVariant, React.CSSProperties> = {
   },
 };
 
+const hoverClass: Record<ButtonVariant, string> = {
+  primary: 'btn-hover-primary',
+  secondary: 'btn-hover-secondary',
+  outline: 'btn-hover-outline',
+  danger: 'btn-hover-danger',
+  ghost: 'btn-hover-ghost',
+};
+
 const sizeStyles: Record<ButtonSize, string> = {
   sm: 'px-3 py-1.5 text-sm',
   md: 'px-4 py-2.5 text-base',
@@ -84,6 +92,7 @@ export function Button({
         tracking-[0.01em]
         ${sizeStyles[size]}
         ${fullWidth ? 'w-full' : ''}
+        ${hoverClass[variant]}
         ${className}
       `}
       style={{
@@ -92,38 +101,6 @@ export function Button({
         ...style,
       }}
       disabled={disabled || loading}
-      onMouseEnter={(e) => {
-        if (disabled || loading) return;
-        const el = e.currentTarget;
-        if (variant === 'primary') {
-          el.style.boxShadow = '0 8px 32px -4px rgba(0, 212, 255, 0.55)';
-          el.style.transform = 'translateY(-1px)';
-        } else if (variant === 'secondary') {
-          el.style.boxShadow = '0 8px 32px -4px rgba(0, 255, 136, 0.55)';
-          el.style.transform = 'translateY(-1px)';
-        } else if (variant === 'outline') {
-          el.style.background = 'rgba(0, 212, 255, 0.08)';
-          el.style.borderColor = 'rgba(0, 212, 255, 0.7)';
-        } else if (variant === 'danger') {
-          el.style.boxShadow = '0 8px 32px -4px rgba(255, 61, 113, 0.55)';
-          el.style.transform = 'translateY(-1px)';
-        } else if (variant === 'ghost') {
-          el.style.background = 'rgba(0, 212, 255, 0.06)';
-          el.style.color = 'var(--text-primary)';
-        }
-        if (props.onMouseEnter) props.onMouseEnter(e);
-      }}
-      onMouseLeave={(e) => {
-        if (disabled || loading) return;
-        const el = e.currentTarget;
-        const s = baseStyle;
-        el.style.boxShadow = (s.boxShadow as string) || '';
-        el.style.transform = '';
-        el.style.background = (s.background as string) || 'transparent';
-        el.style.borderColor = '';
-        el.style.color = (s.color as string) || '';
-        if (props.onMouseLeave) props.onMouseLeave(e);
-      }}
       {...props}
     >
       {loading ? (

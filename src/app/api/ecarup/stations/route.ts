@@ -7,10 +7,15 @@ const OAUTH_TOKEN_URL = 'https://api.smart-me.com/oauth/token';
 let cachedToken: string | null = null;
 let tokenExpiry: number | null = null;
 
-// Cache pre stavy staníc (30 sekúnd pre aktuálnejšie dáta)
+// Cache pre zoznam staníc (2 minúty)
+let stationsListCache: Array<Record<string, unknown>> | null = null;
+let stationsListCacheExpiry: number | null = null;
+const STATIONS_LIST_CACHE_TTL = 2 * 60 * 1000; // 2 minúty
+
+// Cache pre stavy staníc (2 minúty, obnovované na pozadí)
 let stationStatesCache: Map<string, string> = new Map();
 let statesCacheExpiry: number | null = null;
-const STATES_CACHE_TTL = 30 * 1000; // 30 sekúnd
+const STATES_CACHE_TTL = 2 * 60 * 1000; // 2 minúty
 
 // Flag na zabránenie concurrent fetching
 let isFetchingStates = false;
@@ -68,50 +73,57 @@ async function getStationDetail(stationId: string, accessToken: string): Promise
           'Authorization': `Bearer ${accessToken}`,
           'Accept': 'application/json',
         },
-        cache: 'no-store', // Vždy čerstvé dáta
+        cache: 'no-store',
       }
     );
 
     if (!response.ok) {
-      console.warn(`Station ${stationId} detail fetch failed: ${response.status}`);
-      return null; // Vrátiť null - nepoznáme stav
+      return null;
     }
 
     const data = await response.json();
-    // Získať stav z prvého konektora
     const state = data.connectors?.[0]?.state;
     if (state) {
       return { id: stationId, state };
     }
     return null;
-  } catch (error) {
-    console.warn(`Station ${stationId} detail fetch error:`, error);
+  } catch {
     return null;
   }
 }
 
-// Fetch states in batches to avoid overwhelming the API
-async function fetchStatesInBatches(
+// Background refresh stavov staníc - NEBLOKUJE odpoveď
+async function refreshStatesInBackground(
   stations: Array<{ id: string }>,
   accessToken: string,
-  batchSize: number = 10
-): Promise<Map<string, string>> {
-  const results = new Map<string, string>();
+): Promise<void> {
+  if (isFetchingStates) return; // Už prebieha refresh
+  isFetchingStates = true;
 
-  for (let i = 0; i < stations.length; i += batchSize) {
-    const batch = stations.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map(station => getStationDetail(station.id, accessToken))
+  const startTime = Date.now();
+  console.log(`[Background] Refreshing states for ${stations.length} stations...`);
+
+  try {
+    // Fetch ALL station details in parallel (nie v batchoch – je to na pozadí)
+    const results = await Promise.allSettled(
+      stations.map(station => getStationDetail(station.id, accessToken))
     );
 
-    batchResults.forEach(result => {
-      if (result) {
-        results.set(result.id, result.state);
+    const newCache = new Map<string, string>();
+    results.forEach(result => {
+      if (result.status === 'fulfilled' && result.value) {
+        newCache.set(result.value.id, result.value.state);
       }
     });
-  }
 
-  return results;
+    stationStatesCache = newCache;
+    statesCacheExpiry = Date.now() + STATES_CACHE_TTL;
+    console.log(`[Background] Cached states for ${newCache.size} stations in ${Date.now() - startTime}ms`);
+  } catch (error) {
+    console.error('[Background] State refresh failed:', error);
+  } finally {
+    isFetchingStates = false;
+  }
 }
 
 export async function GET(request: Request) {
@@ -128,64 +140,67 @@ export async function GET(request: Request) {
   }
 
   try {
-    const response = await fetch(
-      `${ECARUP_API_BASE}/v1/stations?filter=${filter}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/json',
-        },
-        cache: 'no-store', // Vždy čerstvé dáta
-      }
-    );
+    // 1. Použiť cache zoznamu staníc ak je platná
+    const stationsListNeedsRefresh = !stationsListCache || !stationsListCacheExpiry || Date.now() > stationsListCacheExpiry;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('eCarUp API error:', response.status, errorText);
-      return NextResponse.json(
-        { error: 'Failed to fetch stations', details: errorText },
-        { status: response.status }
+    let stations: Array<Record<string, unknown>>;
+
+    if (!stationsListNeedsRefresh && stationsListCache) {
+      stations = stationsListCache;
+    } else {
+      const response = await fetch(
+        `${ECARUP_API_BASE}/v1/stations?filter=${filter}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept': 'application/json',
+          },
+          cache: 'no-store',
+        }
       );
-    }
 
-    const data = await response.json();
-    const stations = data.stations || [];
-
-    // Ak cache nie je platná a nikto iný práve nefetchuje, získať stavy
-    const needsRefresh = !statesCacheExpiry || Date.now() > statesCacheExpiry;
-
-    if (needsRefresh && !isFetchingStates) {
-      isFetchingStates = true;
-      console.log('Fetching station states in batches...');
-
-      try {
-        // Fetch states in batches of 10 to avoid overwhelming the API
-        stationStatesCache = await fetchStatesInBatches(stations, accessToken, 10);
-        statesCacheExpiry = Date.now() + STATES_CACHE_TTL;
-        console.log(`Cached states for ${stationStatesCache.size} stations`);
-      } finally {
-        isFetchingStates = false;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('eCarUp API error:', response.status, errorText);
+        return NextResponse.json(
+          { error: 'Failed to fetch stations', details: errorText },
+          { status: response.status }
+        );
       }
+
+      const data = await response.json();
+      stations = data.stations || [];
+
+      // Uložiť do cache
+      stationsListCache = stations;
+      stationsListCacheExpiry = Date.now() + STATIONS_LIST_CACHE_TTL;
     }
 
-    // Pridať stav ku každej stanici z cache (nepoužívať default - nechať pôvodný stav z API)
-    const stationsWithState = stations.map((station: { id: string; connectors?: Array<{ state?: string }> }) => ({
+    // 2. Pridať stavy z cache (aj zastaralé – stale-while-revalidate)
+    const stationsWithState = stations.map((station: Record<string, unknown>) => ({
       ...station,
-      connectors: station.connectors?.map(connector => ({
+      connectors: (station.connectors as Array<Record<string, unknown>> | undefined)?.map(connector => ({
         ...connector,
-        // Použiť stav z cache ak existuje, inak ponechať pôvodný stav konektora
-        state: stationStatesCache.get(station.id) || connector.state,
+        state: stationStatesCache.get(station.id as string) || (connector as Record<string, unknown>).state,
       })),
     }));
 
-    // Pridať cache-control header pre klienta
+    // 3. Ak treba refresh stavov, spustiť na POZADÍ (neblokuje odpoveď)
+    const statesNeedRefresh = !statesCacheExpiry || Date.now() > statesCacheExpiry;
+    if (statesNeedRefresh && !isFetchingStates) {
+      // Fire-and-forget – nečakáme na výsledok
+      refreshStatesInBackground(
+        stations as Array<{ id: string }>,
+        accessToken,
+      ).catch(() => { /* handled inside */ });
+    }
+
+    // 4. Vrátiť odpoveď OKAMŽITE
     return NextResponse.json(
       { stations: stationsWithState },
       {
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
+          'Cache-Control': 'public, max-age=30, stale-while-revalidate=120',
         },
       }
     );

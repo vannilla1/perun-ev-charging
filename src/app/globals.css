@@ -386,6 +386,259 @@ button, a, .no-select {
 }
 
 /* ============================================
+   BUTTON HOVER (CSS-based, replaces JS handlers)
+   ============================================ */
+
+.btn-hover-primary {
+  transition: all 0.2s ease-out;
+}
+.btn-hover-primary:hover:not(:disabled) {
+  box-shadow: 0 8px 32px -4px rgba(0, 212, 255, 0.55);
+  transform: translateY(-1px);
+}
+
+.btn-hover-secondary {
+  transition: all 0.2s ease-out;
+}
+.btn-hover-secondary:hover:not(:disabled) {
+  box-shadow: 0 8px 32px -4px rgba(0, 255, 136, 0.55);
+  transform: translateY(-1px);
+}
+
+.btn-hover-outline {
+  transition: all 0.2s ease-out;
+}
+.btn-hover-outline:hover:not(:disabled) {
+  background: rgba(0, 212, 255, 0.08);
+  border-color: rgba(0, 212, 255, 0.7);
+}
+
+.btn-hover-danger {
+  transition: all 0.2s ease-out;
+}
+.btn-hover-danger:hover:not(:disabled) {
+  box-shadow: 0 8px 32px -4px rgba(255, 61, 113, 0.55);
+  transform: translateY(-1px);
+}
+
+.btn-hover-ghost {
+  transition: all 0.2s ease-out;
+}
+.btn-hover-ghost:hover:not(:disabled) {
+  background: rgba(0, 212, 255, 0.06);
+  color: var(--text-primary);
+}
+
+/* Session/list card hover */
+.session-card-hover {
+  transition: all 0.2s ease-out;
+}
+.session-card-hover:hover {
+  border-color: rgba(0, 212, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Menu item hover */
+.menu-item-hover {
+  transition: background 0.2s ease-out;
+}
+.menu-item-hover:hover {
+  background: rgba(0, 212, 255, 0.04);
+}
+.menu-item-hover-danger {
+  transition: background 0.2s ease-out;
+}
+.menu-item-hover-danger:hover {
+  background: rgba(255, 61, 113, 0.05);
+}
+
+/* ============================================
+   PAGE TRANSITIONS & ENTRANCE ANIMATIONS
+   ============================================ */
+
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes stateTransition {
+  0% { opacity: 0; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes chargingPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3), 0 0 60px rgba(0, 255, 136, 0.1);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(0, 255, 136, 0.5), 0 0 100px rgba(0, 255, 136, 0.2);
+    transform: scale(1.03);
+  }
+}
+
+@keyframes scanLineMove {
+  0% { top: 0; opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { top: calc(100% - 2px); opacity: 1; }
+}
+
+@keyframes successPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes energyFlow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+.animate-page-enter { animation: pageEnter 0.35s ease-out; }
+.animate-state-transition { animation: stateTransition 0.3s ease-out; }
+.animate-charging-pulse { animation: chargingPulse 2s ease-in-out infinite; }
+.animate-scan-line { animation: scanLineMove 2s ease-in-out infinite alternate; }
+.animate-success-pop { animation: successPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+.energy-flow-bar {
+  background: linear-gradient(90deg, #00D4FF, #00FF88, #00D4FF);
+  background-size: 200% 100%;
+  animation: energyFlow 2s linear infinite;
+}
+
+/* ============================================
+   DARK AUTH FORM STYLES
+   ============================================ */
+
+.auth-page {
+  background: linear-gradient(180deg, #080C14 0%, #0D1421 50%, #111A2B 100%);
+  min-height: 100vh;
+}
+
+.auth-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.3), transparent);
+}
+
+.auth-input {
+  width: 100%;
+  background: rgba(0, 212, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.auth-input::placeholder {
+  color: var(--text-muted);
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: rgba(0, 212, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+  background: rgba(0, 212, 255, 0.06);
+}
+
+.auth-input:disabled {
+  opacity: 0.5;
+}
+
+.auth-error {
+  background: rgba(255, 61, 113, 0.08);
+  border: 1px solid rgba(255, 61, 113, 0.2);
+  color: #FF3D71;
+  border-radius: var(--border-radius);
+  padding: 12px 16px;
+  font-size: 14px;
+}
+
+.auth-social-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--surface-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-social-btn:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-elevated);
+}
+
+/* Dark status badges for charging page */
+.status-badge-available {
+  background: rgba(0, 255, 136, 0.1);
+  color: #00FF88;
+  border: 1px solid rgba(0, 255, 136, 0.2);
+}
+
+.status-badge-occupied {
+  background: rgba(255, 140, 0, 0.1);
+  color: #FF8C00;
+  border: 1px solid rgba(255, 140, 0, 0.2);
+}
+
+.status-badge-unavailable {
+  background: rgba(255, 61, 113, 0.1);
+  color: #FF3D71;
+  border: 1px solid rgba(255, 61, 113, 0.2);
+}
+
+/* Pre-auth info box (dark) */
+.info-box-blue {
+  background: rgba(0, 212, 255, 0.06);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: var(--border-radius);
+  padding: 16px;
+  color: var(--text-primary);
+}
+
+.info-box-green {
+  background: rgba(0, 255, 136, 0.06);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  border-radius: var(--border-radius);
+  padding: 12px 16px;
+  color: var(--text-primary);
+}
+
+/* Stripe dark wrapper */
+.stripe-element-dark {
+  background: var(--surface-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  padding: 12px 14px;
+  transition: border-color 0.2s ease;
+}
+
+.stripe-element-dark:focus-within {
+  border-color: rgba(0, 212, 255, 0.5);
+}
+
+/* ============================================
    RESPONSIVE DESIGN
    ============================================ */
 
@@ -432,9 +685,14 @@ button, a, .no-select {
 @media (hover: none) and (pointer: coarse) {
   .btn-premium { min-height: 44px; min-width: 44px; }
   input, button, a { min-height: 44px; }
-  .card-premium:hover { transform: none; }
-  .btn-primary:hover { transform: none; }
-  .btn-secondary:hover { transform: none; }
+  .card-premium:hover,
+  .btn-primary:hover,
+  .btn-secondary:hover,
+  .btn-hover-primary:hover,
+  .btn-hover-secondary:hover,
+  .btn-hover-danger:hover,
+  .session-card-hover:hover,
+  .card-hover:hover { transform: none; }
 }
 
 @media (max-height: 500px) and (orientation: landscape) {

@@ -116,21 +116,34 @@ export default function ChangePasswordPage() {
           style={{ padding: '32px 16px 24px 16px' }}
         >
           <div
-            className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-[var(--border-light)] text-center"
+            className="auth-card text-center"
             style={{ padding: '48px 24px' }}
           >
-            <div style={{ marginBottom: '24px' }} className="flex justify-center">
-              <CheckIcon />
+            <div className="animate-success-pop" style={{ marginBottom: '24px' }}>
+              <div
+                className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
+                style={{
+                  background: 'rgba(0, 255, 136, 0.1)',
+                  boxShadow: '0 0 30px rgba(0, 255, 136, 0.15)',
+                }}
+              >
+                <CheckIcon />
+              </div>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]" style={{ marginBottom: '12px' }}>
+            <h2 className="text-xl sm:text-2xl font-bold" style={{ marginBottom: '12px', color: 'var(--text-primary)' }}>
               Heslo zmenené
             </h2>
-            <p className="text-sm sm:text-base text-[var(--text-secondary)]" style={{ marginBottom: '32px' }}>
+            <p className="text-sm sm:text-base" style={{ marginBottom: '32px', color: 'var(--text-secondary)' }}>
               Vaše heslo bolo úspešne zmenené.
             </p>
             <button
               onClick={() => router.push('/profile')}
-              className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-[var(--perun-blue)] to-[var(--perun-blue-dark)] text-white rounded-xl sm:rounded-2xl text-sm sm:text-base font-semibold shadow-lg hover:shadow-xl transition-all"
+              className="w-full py-3.5 sm:py-4 rounded-[var(--border-radius)] text-sm sm:text-base font-semibold transition-all btn-hover-primary"
+              style={{
+                background: 'linear-gradient(135deg, #00D4FF 0%, #0088CC 100%)',
+                color: '#080C14',
+                boxShadow: '0 4px 20px -2px rgba(0, 212, 255, 0.35)',
+              }}
             >
               Späť na profil
             </button>
@@ -149,19 +162,19 @@ export default function ChangePasswordPage() {
         style={{ padding: '32px 16px 24px 16px' }}
       >
         <div
-          className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-[var(--border-light)]"
+          className="auth-card"
           style={{ padding: '24px' }}
         >
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {error && (
-              <div className="p-3 sm:p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+              <div className="auth-error">
                 {error}
               </div>
             )}
 
             {/* Current Password */}
             <div>
-              <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5 sm:mb-2">
+              <label className="block text-sm font-medium mb-1.5 sm:mb-2" style={{ color: 'var(--text-secondary)' }}>
                 Aktuálne heslo
               </label>
               <div className="relative">
@@ -181,7 +194,7 @@ export default function ChangePasswordPage() {
                   }}
                   autoComplete="current-password"
                   disabled={isLoading}
-                  className="w-full bg-[var(--surface-secondary)] border border-[var(--border)] rounded-xl sm:rounded-2xl text-sm sm:text-base text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--perun-blue)] focus:border-transparent transition-all disabled:opacity-50"
+                  className="auth-input"
                   style={{ paddingLeft: '44px', paddingRight: '14px', paddingTop: '12px', paddingBottom: '12px' }}
                 />
               </div>
@@ -189,7 +202,7 @@ export default function ChangePasswordPage() {
 
             {/* New Password */}
             <div>
-              <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5 sm:mb-2">
+              <label className="block text-sm font-medium mb-1.5 sm:mb-2" style={{ color: 'var(--text-secondary)' }}>
                 Nové heslo
               </label>
               <div className="relative">
@@ -209,7 +222,7 @@ export default function ChangePasswordPage() {
                   }}
                   autoComplete="new-password"
                   disabled={isLoading}
-                  className="w-full bg-[var(--surface-secondary)] border border-[var(--border)] rounded-xl sm:rounded-2xl text-sm sm:text-base text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--perun-blue)] focus:border-transparent transition-all disabled:opacity-50"
+                  className="auth-input"
                   style={{ paddingLeft: '44px', paddingRight: '48px', paddingTop: '12px', paddingBottom: '12px' }}
                 />
                 <button
@@ -225,7 +238,7 @@ export default function ChangePasswordPage() {
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5 sm:mb-2">
+              <label className="block text-sm font-medium mb-1.5 sm:mb-2" style={{ color: 'var(--text-secondary)' }}>
                 Potvrďte nové heslo
               </label>
               <div className="relative">
@@ -245,7 +258,7 @@ export default function ChangePasswordPage() {
                   }}
                   autoComplete="new-password"
                   disabled={isLoading}
-                  className="w-full bg-[var(--surface-secondary)] border border-[var(--border)] rounded-xl sm:rounded-2xl text-sm sm:text-base text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--perun-blue)] focus:border-transparent transition-all disabled:opacity-50"
+                  className="auth-input"
                   style={{ paddingLeft: '44px', paddingRight: '14px', paddingTop: '12px', paddingBottom: '12px' }}
                 />
               </div>
@@ -255,8 +268,13 @@ export default function ChangePasswordPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-[var(--perun-blue)] to-[var(--perun-blue-dark)] text-white rounded-xl sm:rounded-2xl text-sm sm:text-base font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              style={{ marginTop: '12px' }}
+              className="w-full py-3.5 sm:py-4 rounded-[var(--border-radius)] text-sm sm:text-base font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 btn-hover-primary"
+              style={{
+                marginTop: '12px',
+                background: 'linear-gradient(135deg, #00D4FF 0%, #0088CC 100%)',
+                color: '#080C14',
+                boxShadow: '0 4px 20px -2px rgba(0, 212, 255, 0.35)',
+              }}
             >
               {isLoading ? (
                 <>
