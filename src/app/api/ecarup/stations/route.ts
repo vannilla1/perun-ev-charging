@@ -22,6 +22,9 @@ let stationPricesCache: Map<string, { pricePerKwh: number; pricePerH: number }> 
 let pricesCacheExpiry: number | null = null;
 const PRICES_CACHE_TTL = 60 * 60 * 1000; // 1 hodina
 
+// Cache pre špeciálnych používateľov (emaily s individuálnymi cenami)
+let stationSpecialUsersCache: Map<string, Set<string>> = new Map();
+
 // Flagy na zabránenie concurrent fetching
 let isFetchingStates = false;
 let isFetchingPrices = false;
@@ -76,8 +79,8 @@ async function getAccessToken(): Promise<string | null> {
   }
 }
 
-// Získanie detailu stanice pre stav konektorov
-async function getStationDetail(stationId: string, accessToken: string): Promise<{ id: string; state: string } | null> {
+// Získanie detailu stanice pre stav konektorov + špeciálnych používateľov
+async function getStationDetail(stationId: string, accessToken: string): Promise<{ id: string; state: string; specialUsers: string[] } | null> {
   try {
     const response = await fetch(
       `${ECARUP_API_BASE}/v1/station/${stationId}`,
@@ -96,8 +99,20 @@ async function getStationDetail(stationId: string, accessToken: string): Promise
 
     const data = await response.json();
     const state = data.connectors?.[0]?.state;
+
+    // Extrahovať emaily špeciálnych používateľov zo všetkých konektorov
+    const specialUsers: string[] = [];
+    for (const connector of (data.connectors || [])) {
+      const users = connector.access?.specialUsers || [];
+      for (const user of users) {
+        if (user.email && !specialUsers.includes(user.email.toLowerCase())) {
+          specialUsers.push(user.email.toLowerCase());
+        }
+      }
+    }
+
     if (state) {
-      return { id: stationId, state };
+      return { id: stationId, state, specialUsers };
     }
     return null;
   } catch {
@@ -105,10 +120,12 @@ async function getStationDetail(stationId: string, accessToken: string): Promise
   }
 }
 
-// Získanie ceny stanice z posledného charging history záznamu
+// Získanie verejnej ceny stanice z charging history
+// Filtruje špeciálne/individuálne ceny viazané na konkrétnych používateľov
 async function getStationPrice(
   stationId: string,
   accessToken: string,
+  specialUserEmails: Set<string>,
 ): Promise<{ id: string; pricePerKwh: number; pricePerH: number } | null> {
   try {
     const response = await fetch(
@@ -129,10 +146,16 @@ async function getStationPrice(
     const data = await response.json();
     const histories = data.histories || [];
 
-    // Hľadať najnovší záznam s nenulovou cenou
+    // 1. Najprv hľadať verejnú cenu — záznamy od NIE-špeciálnych používateľov
     for (const h of histories) {
       const priceInfo = h.station?.priceInformation;
-      if (priceInfo && (priceInfo.pricePerKwh > 0 || priceInfo.pricePerH > 0)) {
+      if (!priceInfo || (priceInfo.pricePerKwh <= 0 && priceInfo.pricePerH <= 0)) continue;
+
+      const driver = (h.driverIdentifier || '').toLowerCase();
+      const isSpecialUser = specialUserEmails.size > 0 && specialUserEmails.has(driver);
+
+      if (!isSpecialUser) {
+        // Tento záznam je od verejného/bežného používateľa — verejná cena
         return {
           id: stationId,
           pricePerKwh: priceInfo.pricePerKwh || 0,
@@ -141,7 +164,24 @@ async function getStationPrice(
       }
     }
 
-    // Ak žiadny záznam nemá cenu, vrátiť 0 (zadarmo)
+    // 2. Ak všetky záznamy s cenou sú LEN od špeciálnych používateľov,
+    // vrátiť null — nevieme verejnú cenu, nech sa aplikuje sieťový medián.
+    // Špeciálne ceny sú zľavy a nemôžu reprezentovať verejnú cenu.
+    if (specialUserEmails.size > 0) {
+      // Skontrolovať či existujú NEJAKÉ záznamy s cenou (aj od špeciálnych)
+      const hasAnyPricedRecord = histories.some((h: Record<string, unknown>) => {
+        const priceInfo = (h.station as Record<string, unknown>)?.priceInformation as Record<string, number> | undefined;
+        return priceInfo && priceInfo.pricePerKwh > 0;
+      });
+      if (hasAnyPricedRecord) {
+        // Sú záznamy s cenou, ale všetky od špeciálnych používateľov — medián je lepší odhad
+        console.log(`[Prices] Station ${stationId}: all priced records from special users, returning null for median fallback`);
+        return null;
+      }
+    }
+
+    // 3. Žiadne záznamy s cenou vôbec — skontrolovať bez špeciálnych používateľov
+    // (stanica bez specialUsers a bez ceny = zadarmo)
     if (histories.length > 0) {
       return { id: stationId, pricePerKwh: 0, pricePerH: 0 };
     }
@@ -169,6 +209,7 @@ async function fetchStatesInBatches(
 
   try {
     const newCache = new Map<string, string>();
+    const newSpecialUsersCache = new Map<string, Set<string>>();
 
     for (let i = 0; i < stations.length; i += BATCH_SIZE) {
       const batch = stations.slice(i, i + BATCH_SIZE);
@@ -179,6 +220,10 @@ async function fetchStatesInBatches(
       results.forEach(result => {
         if (result.status === 'fulfilled' && result.value) {
           newCache.set(result.value.id, result.value.state);
+          // Uložiť špeciálnych používateľov pre neskoršie filtrovanie cien
+          if (result.value.specialUsers.length > 0) {
+            newSpecialUsersCache.set(result.value.id, new Set(result.value.specialUsers));
+          }
         }
       });
 
@@ -188,8 +233,10 @@ async function fetchStatesInBatches(
     }
 
     stationStatesCache = newCache;
+    stationSpecialUsersCache = newSpecialUsersCache;
     statesCacheExpiry = Date.now() + STATES_CACHE_TTL;
-    console.log(`[States] Cached ${newCache.size}/${stations.length} states in ${Date.now() - startTime}ms`);
+    const specialCount = newSpecialUsersCache.size;
+    console.log(`[States] Cached ${newCache.size}/${stations.length} states (${specialCount} stations with special users) in ${Date.now() - startTime}ms`);
   } catch (error) {
     console.error('[States] Fetch failed:', error);
   } finally {
@@ -215,7 +262,10 @@ async function fetchPricesInBatches(
     for (let i = 0; i < stations.length; i += BATCH_SIZE) {
       const batch = stations.slice(i, i + BATCH_SIZE);
       const results = await Promise.allSettled(
-        batch.map(station => getStationPrice(station.id, accessToken))
+        batch.map(station => {
+          const specialUsers = stationSpecialUsersCache.get(station.id) || new Set<string>();
+          return getStationPrice(station.id, accessToken, specialUsers);
+        })
       );
 
       results.forEach(result => {
