@@ -199,7 +199,7 @@ async function fetchStatesInBatches(
 
 // Fetch cien z history v batchoch
 async function fetchPricesInBatches(
-  stations: Array<{ id: string }>,
+  stations: Array<{ id: string; name?: string }>,
   accessToken: string,
 ): Promise<void> {
   if (isFetchingPrices) return;
@@ -231,9 +231,70 @@ async function fetchPricesInBatches(
       }
     }
 
+    // Dedenie cien medzi L↔P pármi na rovnakej lokácii
+    // Ak jedna strana nemá cenu (0) ale jej partner áno, zdediť cenu
+    const stationsWithNames = stations.filter(s => s.name);
+    for (const station of stationsWithNames) {
+      const name = (station.name || '').trim();
+      const cached = newCache.get(station.id);
+      const hasPaid = cached && cached.pricePerKwh > 0;
+
+      if (!hasPaid) {
+        // Nájsť párový partner (L↔P)
+        let partnerName = '';
+        if (name.endsWith(' L')) {
+          partnerName = name.slice(0, -2) + ' P';
+        } else if (name.endsWith(' P')) {
+          partnerName = name.slice(0, -2) + ' L';
+        }
+
+        if (partnerName) {
+          const partner = stationsWithNames.find(s => (s.name || '').trim() === partnerName);
+          if (partner) {
+            const partnerPrice = newCache.get(partner.id);
+            if (partnerPrice && partnerPrice.pricePerKwh > 0) {
+              newCache.set(station.id, { ...partnerPrice });
+            }
+          }
+        }
+      }
+    }
+
+    // Fallback: Ak stanica nemá cenu z histórie a NIE JE Drahňov, použiť sieťový medián
+    // Drahňov je jediná stanica, ktorá je reálne zadarmo
+    const paidPrices = Array.from(newCache.values())
+      .map(p => p.pricePerKwh)
+      .filter(p => p > 0)
+      .sort((a, b) => a - b);
+
+    if (paidPrices.length > 0) {
+      const medianPrice = paidPrices[Math.floor(paidPrices.length / 2)];
+      // Nájsť aj mediánovú pricePerH
+      const paidPerH = Array.from(newCache.values())
+        .map(p => p.pricePerH)
+        .filter(p => p > 0)
+        .sort((a, b) => a - b);
+      const medianPerH = paidPerH.length > 0 ? paidPerH[Math.floor(paidPerH.length / 2)] : 0;
+
+      console.log(`[Prices] Network median: ${medianPrice.toFixed(2)} €/kWh, ${medianPerH.toFixed(2)} €/h`);
+
+      for (const station of stations) {
+        const name = (station.name || '').trim();
+        const isDrahov = name.toLowerCase().includes('drahňov') || name.toLowerCase().includes('drahnov');
+        const cached = newCache.get(station.id);
+        const hasPaid = cached && cached.pricePerKwh > 0;
+
+        if (!hasPaid && !isDrahov) {
+          // Stanica nemá cenu z histórie a nie je Drahňov — použiť sieťový medián
+          newCache.set(station.id, { pricePerKwh: medianPrice, pricePerH: medianPerH });
+        }
+      }
+    }
+
+    const withPrice = Array.from(newCache.values()).filter(p => p.pricePerKwh > 0).length;
     stationPricesCache = newCache;
     pricesCacheExpiry = Date.now() + PRICES_CACHE_TTL;
-    console.log(`[Prices] Cached ${newCache.size}/${stations.length} prices in ${Date.now() - startTime}ms`);
+    console.log(`[Prices] Cached ${newCache.size}/${stations.length} prices (${withPrice} paid, ${stations.length - withPrice} free) in ${Date.now() - startTime}ms`);
   } catch (error) {
     console.error('[Prices] Fetch failed:', error);
   } finally {
@@ -315,13 +376,13 @@ export async function GET(request: Request) {
 
     if (isFirstPriceLoad && !isFetchingPrices) {
       await fetchPricesInBatches(
-        stations as Array<{ id: string }>,
+        stations as Array<{ id: string; name?: string }>,
         accessToken,
       );
     } else if (pricesNeedRefresh && !isFetchingPrices) {
       // Fire-and-forget — ceny sa menia zriedka
       fetchPricesInBatches(
-        stations as Array<{ id: string }>,
+        stations as Array<{ id: string; name?: string }>,
         accessToken,
       ).catch(() => { /* handled inside */ });
     }
