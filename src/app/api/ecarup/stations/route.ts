@@ -146,38 +146,46 @@ async function getStationPrice(
     const data = await response.json();
     const histories = data.histories || [];
 
-    // 1. Najprv hľadať verejnú cenu — záznamy od NIE-špeciálnych používateľov
+    // 1. Hľadať verejnú cenu — záznamy od NIE-špeciálnych používateľov
+    // Špeciálni = email v zozname specialUsers (majú individuálne ceny)
+    // Akceptujeme anonymné tokeny (väčšina verejných používateľov), ale len ak
+    // sú nedávne (< 6 mesiacov), lebo ceny sa menia a staré záznamy sú nespoľahlivé
+    const SIX_MONTHS_MS = 180 * 24 * 60 * 60 * 1000;
+    const cutoffDate = new Date(Date.now() - SIX_MONTHS_MS);
+
     for (const h of histories) {
       const priceInfo = h.station?.priceInformation;
       if (!priceInfo || (priceInfo.pricePerKwh <= 0 && priceInfo.pricePerH <= 0)) continue;
 
       const driver = (h.driverIdentifier || '').toLowerCase();
-      const isSpecialUser = specialUserEmails.size > 0 && specialUserEmails.has(driver);
 
-      if (!isSpecialUser) {
-        // Tento záznam je od verejného/bežného používateľa — verejná cena
-        return {
-          id: stationId,
-          pricePerKwh: priceInfo.pricePerKwh || 0,
-          pricePerH: priceInfo.pricePerH || 0,
-        };
+      // Preskočiť špeciálnych používateľov (emaily s individuálnymi cenami)
+      if (specialUserEmails.size > 0 && specialUserEmails.has(driver)) continue;
+
+      // Skontrolovať dátum záznamu — staré záznamy môžu mať neaktuálne ceny
+      const recordDate = h.startTime ? new Date(h.startTime) : null;
+      if (recordDate && recordDate < cutoffDate) {
+        // Starý záznam (> 6 mesiacov) — preskočiť, cena mohla byť medzitým zmenená
+        continue;
       }
+
+      // Nedávny záznam od ne-špeciálneho používateľa — verejná cena
+      return {
+        id: stationId,
+        pricePerKwh: priceInfo.pricePerKwh || 0,
+        pricePerH: priceInfo.pricePerH || 0,
+      };
     }
 
-    // 2. Ak všetky záznamy s cenou sú LEN od špeciálnych používateľov,
-    // vrátiť null — nevieme verejnú cenu, nech sa aplikuje sieťový medián.
-    // Špeciálne ceny sú zľavy a nemôžu reprezentovať verejnú cenu.
-    if (specialUserEmails.size > 0) {
-      // Skontrolovať či existujú NEJAKÉ záznamy s cenou (aj od špeciálnych)
-      const hasAnyPricedRecord = histories.some((h: Record<string, unknown>) => {
-        const priceInfo = (h.station as Record<string, unknown>)?.priceInformation as Record<string, number> | undefined;
-        return priceInfo && priceInfo.pricePerKwh > 0;
-      });
-      if (hasAnyPricedRecord) {
-        // Sú záznamy s cenou, ale všetky od špeciálnych používateľov — medián je lepší odhad
-        console.log(`[Prices] Station ${stationId}: all priced records from special users, returning null for median fallback`);
-        return null;
-      }
+    // 2. Žiadny nedávny verejný záznam. Ak existujú záznamy s cenou (staré alebo špeciálne),
+    // nevieme aktuálnu verejnú cenu → vrátiť null pre sieťový medián.
+    const hasAnyPricedRecord = histories.some((h: Record<string, unknown>) => {
+      const priceInfo = (h.station as Record<string, unknown>)?.priceInformation as Record<string, number> | undefined;
+      return priceInfo && priceInfo.pricePerKwh > 0;
+    });
+    if (hasAnyPricedRecord) {
+      console.log(`[Prices] Station ${stationId}: no recent public price found, returning null for median fallback`);
+      return null;
     }
 
     // 3. Žiadne záznamy s cenou vôbec — skontrolovať bez špeciálnych používateľov
