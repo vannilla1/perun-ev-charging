@@ -281,7 +281,7 @@ export function StationMap({
       <div className="flex items-center justify-between pt-2 border-t border-gray-100">
         <span className="text-xs text-gray-500">Cena za kWh</span>
         <span className="text-lg font-bold" style={{ color: PERUN_COLORS.blue }}>
-          {station.pricePerKwh.toFixed(2)} €
+          {station.pricePerKwh > 0 ? `${station.pricePerKwh.toFixed(2)} €` : 'Zadarmo'}
         </span>
       </div>
     </div>

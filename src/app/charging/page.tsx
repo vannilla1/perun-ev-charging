@@ -285,14 +285,20 @@ export default function ChargingPage() {
             <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
               <span className="text-[var(--text-secondary)]">Cena za energiu</span>
               <span className="font-semibold text-[var(--accent)]">
-                {stationInfo?.pricePerKwh?.toFixed(2) || '0.44'} EUR/kWh
+                {stationInfo?.pricePerKwh != null && stationInfo.pricePerKwh > 0
+                  ? `${stationInfo.pricePerKwh.toFixed(2)} EUR/kWh`
+                  : 'Zadarmo'}
               </span>
             </div>
 
             {/* Cena za čas */}
             <div className="flex justify-between items-center py-2">
               <span className="text-[var(--text-secondary)]">Cena za čas</span>
-              <span className="font-semibold">0.00 EUR/hod</span>
+              <span className="font-semibold">
+                {stationInfo?.pricePerH != null && stationInfo.pricePerH > 0
+                  ? `${stationInfo.pricePerH.toFixed(2)} EUR/hod`
+                  : '0.00 EUR/hod'}
+              </span>
             </div>
           </div>
         </CardContent>
@@ -345,7 +351,7 @@ export default function ChargingPage() {
             stationInfo={{
               name: stationInfo?.name || 'Nabíjacia stanica',
               address: stationInfo?.address || '',
-              pricePerKwh: stationInfo?.pricePerKwh || 0.44,
+              pricePerKwh: stationInfo?.pricePerKwh ?? 0,
             }}
             onPaymentConfirmed={handleGuestPaymentConfirmed}
             onCancel={handleNewSession}
@@ -364,7 +370,9 @@ export default function ChargingPage() {
             <div className="flex justify-between items-center pt-3 border-t border-[var(--border)]">
               <span className="text-sm text-[var(--text-secondary)]">Cena za kWh</span>
               <span className="font-semibold text-[var(--text-primary)]">
-                {(stationInfo?.pricePerKwh || 0.44).toFixed(2)} EUR
+                {stationInfo?.pricePerKwh != null && stationInfo.pricePerKwh > 0
+                  ? `${stationInfo.pricePerKwh.toFixed(2)} EUR`
+                  : 'Zadarmo'}
               </span>
             </div>
           </div>

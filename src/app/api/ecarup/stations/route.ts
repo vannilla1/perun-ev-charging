@@ -17,8 +17,14 @@ let stationStatesCache: Map<string, string> = new Map();
 let statesCacheExpiry: number | null = null;
 const STATES_CACHE_TTL = 2 * 60 * 1000;
 
-// Flag na zabránenie concurrent fetching
+// Cache pre ceny staníc (1 hodina — ceny sa menia zriedka)
+let stationPricesCache: Map<string, { pricePerKwh: number; pricePerH: number }> = new Map();
+let pricesCacheExpiry: number | null = null;
+const PRICES_CACHE_TTL = 60 * 60 * 1000; // 1 hodina
+
+// Flagy na zabránenie concurrent fetching
 let isFetchingStates = false;
+let isFetchingPrices = false;
 
 // Promise pre prvý fetch — ostatné requesty na ňu čakajú
 let initialFetchPromise: Promise<void> | null = null;
@@ -98,6 +104,53 @@ async function getStationDetail(stationId: string, accessToken: string): Promise
   }
 }
 
+// Získanie ceny stanice z posledného charging history záznamu
+async function getStationPrice(
+  stationId: string,
+  accessToken: string,
+): Promise<{ id: string; pricePerKwh: number; pricePerH: number } | null> {
+  try {
+    const response = await fetch(
+      `${ECARUP_API_BASE}/v1/history/station/${stationId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json',
+        },
+        cache: 'no-store',
+      }
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    const histories = data.histories || [];
+
+    // Hľadať najnovší záznam s nenulovou cenou
+    for (const h of histories) {
+      const priceInfo = h.station?.priceInformation;
+      if (priceInfo && (priceInfo.pricePerKwh > 0 || priceInfo.pricePerH > 0)) {
+        return {
+          id: stationId,
+          pricePerKwh: priceInfo.pricePerKwh || 0,
+          pricePerH: priceInfo.pricePerH || 0,
+        };
+      }
+    }
+
+    // Ak žiadny záznam nemá cenu, vrátiť 0 (zadarmo)
+    if (histories.length > 0) {
+      return { id: stationId, pricePerKwh: 0, pricePerH: 0 };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -128,7 +181,6 @@ async function fetchStatesInBatches(
         }
       });
 
-      // Pauza medzi batchmi aby sme nepreťažili API
       if (i + BATCH_SIZE < stations.length) {
         await sleep(BATCH_DELAY);
       }
@@ -142,6 +194,50 @@ async function fetchStatesInBatches(
   } finally {
     isFetchingStates = false;
     initialFetchPromise = null;
+  }
+}
+
+// Fetch cien z history v batchoch
+async function fetchPricesInBatches(
+  stations: Array<{ id: string }>,
+  accessToken: string,
+): Promise<void> {
+  if (isFetchingPrices) return;
+  isFetchingPrices = true;
+
+  const startTime = Date.now();
+  console.log(`[Prices] Fetching prices for ${stations.length} stations in batches of ${BATCH_SIZE}...`);
+
+  try {
+    const newCache = new Map<string, { pricePerKwh: number; pricePerH: number }>();
+
+    for (let i = 0; i < stations.length; i += BATCH_SIZE) {
+      const batch = stations.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(station => getStationPrice(station.id, accessToken))
+      );
+
+      results.forEach(result => {
+        if (result.status === 'fulfilled' && result.value) {
+          newCache.set(result.value.id, {
+            pricePerKwh: result.value.pricePerKwh,
+            pricePerH: result.value.pricePerH,
+          });
+        }
+      });
+
+      if (i + BATCH_SIZE < stations.length) {
+        await sleep(BATCH_DELAY);
+      }
+    }
+
+    stationPricesCache = newCache;
+    pricesCacheExpiry = Date.now() + PRICES_CACHE_TTL;
+    console.log(`[Prices] Cached ${newCache.size}/${stations.length} prices in ${Date.now() - startTime}ms`);
+  } catch (error) {
+    console.error('[Prices] Fetch failed:', error);
+  } finally {
+    isFetchingPrices = false;
   }
 }
 
@@ -190,7 +286,6 @@ export async function GET(request: Request) {
       const data = await response.json();
       stations = data.stations || [];
 
-      // Uložiť do cache
       stationsListCache = stations;
       stationsListCacheExpiry = Date.now() + STATIONS_LIST_CACHE_TTL;
     }
@@ -200,35 +295,54 @@ export async function GET(request: Request) {
     const statesNeedRefresh = !statesCacheExpiry || Date.now() > statesCacheExpiry;
 
     if (isFirstLoad && !isFetchingStates) {
-      // Prvé načítanie — blokujeme a čakáme na stavy
       initialFetchPromise = fetchStatesInBatches(
         stations as Array<{ id: string }>,
         accessToken,
       );
       await initialFetchPromise;
     } else if (isFirstLoad && initialFetchPromise) {
-      // Iný request počas prvého načítania — čakáme na ten istý promise
       await initialFetchPromise;
     } else if (statesNeedRefresh && !isFetchingStates) {
-      // Následné refreshe — fire-and-forget (stale-while-revalidate)
       fetchStatesInBatches(
         stations as Array<{ id: string }>,
         accessToken,
       ).catch(() => { /* handled inside */ });
     }
 
-    // 3. Pridať stavy z cache
-    const stationsWithState = stations.map((station: Record<string, unknown>) => ({
-      ...station,
-      connectors: (station.connectors as Array<Record<string, unknown>> | undefined)?.map(connector => ({
-        ...connector,
-        state: stationStatesCache.get(station.id as string) || (connector as Record<string, unknown>).state,
-      })),
-    }));
+    // 3. Ceny — prvé načítanie blokuje, potom stale-while-revalidate
+    const isFirstPriceLoad = stationPricesCache.size === 0;
+    const pricesNeedRefresh = !pricesCacheExpiry || Date.now() > pricesCacheExpiry;
 
-    // 4. Vrátiť odpoveď
+    if (isFirstPriceLoad && !isFetchingPrices) {
+      await fetchPricesInBatches(
+        stations as Array<{ id: string }>,
+        accessToken,
+      );
+    } else if (pricesNeedRefresh && !isFetchingPrices) {
+      // Fire-and-forget — ceny sa menia zriedka
+      fetchPricesInBatches(
+        stations as Array<{ id: string }>,
+        accessToken,
+      ).catch(() => { /* handled inside */ });
+    }
+
+    // 4. Pridať stavy a ceny z cache
+    const stationsWithData = stations.map((station: Record<string, unknown>) => {
+      const price = stationPricesCache.get(station.id as string);
+      return {
+        ...station,
+        connectors: (station.connectors as Array<Record<string, unknown>> | undefined)?.map(connector => ({
+          ...connector,
+          state: stationStatesCache.get(station.id as string) || (connector as Record<string, unknown>).state,
+          pricePerKwh: price?.pricePerKwh,
+          pricePerH: price?.pricePerH,
+        })),
+      };
+    });
+
+    // 5. Vrátiť odpoveď
     return NextResponse.json(
-      { stations: stationsWithState },
+      { stations: stationsWithData },
       {
         headers: {
           'Cache-Control': 'public, max-age=30, stale-while-revalidate=120',

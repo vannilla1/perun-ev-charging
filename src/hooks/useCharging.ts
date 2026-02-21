@@ -40,6 +40,7 @@ interface StationInfo {
   maxPower: number | null;
   plugType: string;
   pricePerKwh: number;
+  pricePerH: number;
   status: string;
   originalUrl?: string;
 }
@@ -107,7 +108,8 @@ export function useCharging(): UseChargingResult {
         address: data.station?.address || '',
         maxPower: data.station?.maxPower || null,
         plugType: data.station?.plugType || 'Type 2',
-        pricePerKwh: data.pricing?.pricePerKwh || 0.44,
+        pricePerKwh: data.pricing?.pricePerKwh ?? 0,
+        pricePerH: data.pricing?.pricePerHour ?? 0,
         status: data.status || 'available',
         originalUrl: data.originalUrl,
       });
@@ -286,7 +288,7 @@ export function useCharging(): UseChargingResult {
           ...prev,
           duration: prev.duration + 1,
           energy: prev.energy + (prev.power / 3600),
-          cost: (prev.energy + (prev.power / 3600)) * (stationInfo?.pricePerKwh || 0.44),
+          cost: (prev.energy + (prev.power / 3600)) * (stationInfo?.pricePerKwh ?? 0),
         }));
       }, 1000);
     }

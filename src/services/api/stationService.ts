@@ -29,6 +29,7 @@ interface ECarUpConnector {
   status?: string;
   state?: string;  // "AVAILABLE" alebo "UNAVAILABLE" z detailu stanice
   pricePerKwh?: number;
+  pricePerH?: number;
   access?: {
     type: string;  // "PUBLIC" alebo "PRIVATE"
   };
@@ -78,7 +79,8 @@ function mapECarUpStation(station: ECarUpStation): ChargingStation {
       status: mapConnectorStatus(c.state || c.status || 'Offline'),
       pricePerKwh: c.pricePerKwh,
     })),
-    pricePerKwh: station.connectors?.[0]?.pricePerKwh || 0.35,
+    pricePerKwh: station.connectors?.[0]?.pricePerKwh ?? 0,
+    pricePerH: station.connectors?.[0]?.pricePerH ?? 0,
     operator: station.stationGroups?.[0]?.name || 'ePerun',
   };
 }

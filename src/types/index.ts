@@ -10,6 +10,7 @@ export interface ChargingStation {
   status: StationStatus;
   connectors: Connector[];
   pricePerKwh: number;
+  pricePerH?: number;
   operator: string;
   openingHours?: string;
   amenities?: string[];

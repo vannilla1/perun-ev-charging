@@ -355,7 +355,9 @@ export default function MapPage() {
                   <div>
                     <p className="text-[10px] sm:text-xs text-[var(--text-muted)] mb-0.5">Cena za kWh</p>
                     <p className="text-xl sm:text-2xl font-bold text-[var(--perun-blue)]">
-                      {selectedStation.pricePerKwh.toFixed(2)} <span className="text-sm sm:text-base font-normal">€</span>
+                      {selectedStation.pricePerKwh > 0
+                        ? <>{selectedStation.pricePerKwh.toFixed(2)} <span className="text-sm sm:text-base font-normal">€</span></>
+                        : 'Zadarmo'}
                     </p>
                   </div>
                   <div className="flex gap-2 sm:gap-3 w-full xs:w-auto">
