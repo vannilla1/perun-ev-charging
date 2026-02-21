@@ -10,15 +10,21 @@ let tokenExpiry: number | null = null;
 // Cache pre zoznam staníc (2 minúty)
 let stationsListCache: Array<Record<string, unknown>> | null = null;
 let stationsListCacheExpiry: number | null = null;
-const STATIONS_LIST_CACHE_TTL = 2 * 60 * 1000; // 2 minúty
+const STATIONS_LIST_CACHE_TTL = 2 * 60 * 1000;
 
 // Cache pre stavy staníc (2 minúty, obnovované na pozadí)
 let stationStatesCache: Map<string, string> = new Map();
 let statesCacheExpiry: number | null = null;
-const STATES_CACHE_TTL = 2 * 60 * 1000; // 2 minúty
+const STATES_CACHE_TTL = 2 * 60 * 1000;
 
 // Flag na zabránenie concurrent fetching
 let isFetchingStates = false;
+
+// Promise pre prvý fetch — ostatné requesty na ňu čakajú
+let initialFetchPromise: Promise<void> | null = null;
+
+const BATCH_SIZE = 8;
+const BATCH_DELAY = 200; // ms medzi batchmi
 
 async function getAccessToken(): Promise<string | null> {
   if (cachedToken && tokenExpiry && Date.now() < tokenExpiry) {
@@ -92,37 +98,50 @@ async function getStationDetail(stationId: string, accessToken: string): Promise
   }
 }
 
-// Background refresh stavov staníc - NEBLOKUJE odpoveď
-async function refreshStatesInBackground(
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Refresh stavov v batchoch — nepreťažuje API
+async function fetchStatesInBatches(
   stations: Array<{ id: string }>,
   accessToken: string,
 ): Promise<void> {
-  if (isFetchingStates) return; // Už prebieha refresh
+  if (isFetchingStates) return;
   isFetchingStates = true;
 
   const startTime = Date.now();
-  console.log(`[Background] Refreshing states for ${stations.length} stations...`);
+  console.log(`[States] Fetching states for ${stations.length} stations in batches of ${BATCH_SIZE}...`);
 
   try {
-    // Fetch ALL station details in parallel (nie v batchoch – je to na pozadí)
-    const results = await Promise.allSettled(
-      stations.map(station => getStationDetail(station.id, accessToken))
-    );
-
     const newCache = new Map<string, string>();
-    results.forEach(result => {
-      if (result.status === 'fulfilled' && result.value) {
-        newCache.set(result.value.id, result.value.state);
+
+    for (let i = 0; i < stations.length; i += BATCH_SIZE) {
+      const batch = stations.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(station => getStationDetail(station.id, accessToken))
+      );
+
+      results.forEach(result => {
+        if (result.status === 'fulfilled' && result.value) {
+          newCache.set(result.value.id, result.value.state);
+        }
+      });
+
+      // Pauza medzi batchmi aby sme nepreťažili API
+      if (i + BATCH_SIZE < stations.length) {
+        await sleep(BATCH_DELAY);
       }
-    });
+    }
 
     stationStatesCache = newCache;
     statesCacheExpiry = Date.now() + STATES_CACHE_TTL;
-    console.log(`[Background] Cached states for ${newCache.size} stations in ${Date.now() - startTime}ms`);
+    console.log(`[States] Cached ${newCache.size}/${stations.length} states in ${Date.now() - startTime}ms`);
   } catch (error) {
-    console.error('[Background] State refresh failed:', error);
+    console.error('[States] Fetch failed:', error);
   } finally {
     isFetchingStates = false;
+    initialFetchPromise = null;
   }
 }
 
@@ -176,7 +195,29 @@ export async function GET(request: Request) {
       stationsListCacheExpiry = Date.now() + STATIONS_LIST_CACHE_TTL;
     }
 
-    // 2. Pridať stavy z cache (aj zastaralé – stale-while-revalidate)
+    // 2. Ak cache stavov je prázdna (prvé načítanie), ČAKAŤ na fetch
+    const isFirstLoad = stationStatesCache.size === 0;
+    const statesNeedRefresh = !statesCacheExpiry || Date.now() > statesCacheExpiry;
+
+    if (isFirstLoad && !isFetchingStates) {
+      // Prvé načítanie — blokujeme a čakáme na stavy
+      initialFetchPromise = fetchStatesInBatches(
+        stations as Array<{ id: string }>,
+        accessToken,
+      );
+      await initialFetchPromise;
+    } else if (isFirstLoad && initialFetchPromise) {
+      // Iný request počas prvého načítania — čakáme na ten istý promise
+      await initialFetchPromise;
+    } else if (statesNeedRefresh && !isFetchingStates) {
+      // Následné refreshe — fire-and-forget (stale-while-revalidate)
+      fetchStatesInBatches(
+        stations as Array<{ id: string }>,
+        accessToken,
+      ).catch(() => { /* handled inside */ });
+    }
+
+    // 3. Pridať stavy z cache
     const stationsWithState = stations.map((station: Record<string, unknown>) => ({
       ...station,
       connectors: (station.connectors as Array<Record<string, unknown>> | undefined)?.map(connector => ({
@@ -185,17 +226,7 @@ export async function GET(request: Request) {
       })),
     }));
 
-    // 3. Ak treba refresh stavov, spustiť na POZADÍ (neblokuje odpoveď)
-    const statesNeedRefresh = !statesCacheExpiry || Date.now() > statesCacheExpiry;
-    if (statesNeedRefresh && !isFetchingStates) {
-      // Fire-and-forget – nečakáme na výsledok
-      refreshStatesInBackground(
-        stations as Array<{ id: string }>,
-        accessToken,
-      ).catch(() => { /* handled inside */ });
-    }
-
-    // 4. Vrátiť odpoveď OKAMŽITE
+    // 4. Vrátiť odpoveď
     return NextResponse.json(
       { stations: stationsWithState },
       {

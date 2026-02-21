@@ -47,20 +47,22 @@ function mapECarUpStation(station: ECarUpStation): ChargingStation {
   // Stanica bez konektorov = offline
   const hasConnectors = station.connectors && station.connectors.length > 0;
 
-  // Skontrolovať či je stanica UNAVAILABLE (z API state)
-  const isUnavailable = station.connectors?.some(c => c.state === 'UNAVAILABLE');
+  // Skontrolovať či konektory majú známy stav z API
+  const hasKnownState = station.connectors?.some(c => c.state === 'AVAILABLE' || c.state === 'UNAVAILABLE' || c.state === 'CHARGING' || c.state === 'OCCUPIED');
 
   // Určenie celkového statusu stanice na základe konektorov
   const hasAvailable = station.connectors?.some(c => c.state === 'AVAILABLE' || c.status === 'Available');
-  const allOffline = station.connectors?.every(c => c.status === 'Offline' || c.state === 'UNAVAILABLE');
+  const hasCharging = station.connectors?.some(c => c.state === 'CHARGING' || c.state === 'OCCUPIED' || c.status === 'Charging');
+  const allUnavailable = station.connectors?.every(c => c.state === 'UNAVAILABLE' || c.status === 'Offline');
 
-  // Default je offline - stanica musí explicitne mať dostupný konektor
+  // Default je offline — stanica musí explicitne mať známy stav
   let status: ChargingStation['status'] = 'offline';
-  if (!hasConnectors) status = 'offline';  // Bez konektorov = offline
-  else if (isUnavailable) status = 'offline';  // UNAVAILABLE = offline (šedá)
-  else if (allOffline) status = 'offline';
+  if (!hasConnectors) status = 'offline';
+  else if (!hasKnownState) status = 'offline';  // Neznámy stav = offline (šedá)
+  else if (allUnavailable) status = 'offline';
   else if (hasAvailable) status = 'available';  // Aspoň jeden konektor dostupný
-  else status = 'occupied';  // Má konektory ale žiadny nie je available
+  else if (hasCharging) status = 'occupied';  // Nabíja sa
+  else status = 'offline';
 
   return {
     id: station.id,
@@ -73,7 +75,7 @@ function mapECarUpStation(station: ECarUpStation): ChargingStation {
       id: c.id,
       type: mapConnectorType(c.plugtype),
       power: Math.round((c.maxpower || 0) / 1000), // Konverzia z W na kW
-      status: mapConnectorStatus(c.state || c.status || 'Available'),
+      status: mapConnectorStatus(c.state || c.status || 'Offline'),
       pricePerKwh: c.pricePerKwh,
     })),
     pricePerKwh: station.connectors?.[0]?.pricePerKwh || 0.35,
