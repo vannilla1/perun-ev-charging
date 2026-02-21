@@ -28,6 +28,7 @@ let isFetchingPrices = false;
 
 // Promise pre prvý fetch — ostatné requesty na ňu čakajú
 let initialFetchPromise: Promise<void> | null = null;
+let initialPriceFetchPromise: Promise<void> | null = null;
 
 const BATCH_SIZE = 8;
 const BATCH_DELAY = 200; // ms medzi batchmi
@@ -299,6 +300,7 @@ async function fetchPricesInBatches(
     console.error('[Prices] Fetch failed:', error);
   } finally {
     isFetchingPrices = false;
+    initialPriceFetchPromise = null;
   }
 }
 
@@ -375,10 +377,14 @@ export async function GET(request: Request) {
     const pricesNeedRefresh = !pricesCacheExpiry || Date.now() > pricesCacheExpiry;
 
     if (isFirstPriceLoad && !isFetchingPrices) {
-      await fetchPricesInBatches(
+      initialPriceFetchPromise = fetchPricesInBatches(
         stations as Array<{ id: string; name?: string }>,
         accessToken,
       );
+      await initialPriceFetchPromise;
+    } else if (isFirstPriceLoad && initialPriceFetchPromise) {
+      // Iný request už fetchuje ceny — čakať na neho
+      await initialPriceFetchPromise;
     } else if (pricesNeedRefresh && !isFetchingPrices) {
       // Fire-and-forget — ceny sa menia zriedka
       fetchPricesInBatches(
