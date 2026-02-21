@@ -313,6 +313,17 @@ h1, h2, h3, h4, h5, h6 {
   z-index: 1;
 }
 
+/* Animácie pre map markery (definované raz, nie v každom markeri) */
+@keyframes marker-pulse {
+  0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.3; transform: translate(-50%, -50%) scale(1.2); }
+}
+
+@keyframes user-pulse {
+  0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.5); }
+}
+
 .leaflet-control-container {
   z-index: 10;
 }

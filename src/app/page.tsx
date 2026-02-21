@@ -212,8 +212,8 @@ export default function MapPage() {
         </div>
 
         {/* Search bar - Premium Design - Responzívny */}
-        <div className="absolute top-14 sm:top-20 left-2 right-2 sm:left-4 sm:right-4 z-10">
-          <div className="flex gap-2 sm:gap-3">
+        <div className="absolute top-14 sm:top-20 left-2 right-2 sm:left-4 sm:right-4 z-10 pointer-events-none">
+          <div className="flex gap-2 sm:gap-3 pointer-events-auto">
             <div className="flex-1 relative">
               <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none text-[var(--text-muted)]">
                 <SearchIcon />
@@ -240,7 +240,7 @@ export default function MapPage() {
 
           {/* Filter panel - Premium Design */}
           {showFilters && (
-            <div className="mt-2 sm:mt-3 bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-lg border border-white/50 overflow-hidden animate-slide-up">
+            <div className="mt-2 sm:mt-3 bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-lg border border-white/50 overflow-hidden animate-slide-up pointer-events-auto">
               <div className="p-3 sm:p-4">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <h3 className="font-semibold text-sm sm:text-base text-[var(--text-primary)]">Filtre</h3>

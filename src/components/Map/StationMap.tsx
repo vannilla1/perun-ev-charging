@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { ChargingStation } from '@/types';
@@ -47,7 +47,7 @@ const createCustomIcon = (status: ChargingStation['status']) => {
           height: 40px;
           background: ${glowColors[status]};
           border-radius: 50%;
-          animation: pulse 2s ease-in-out infinite;
+          animation: marker-pulse 2s ease-in-out infinite;
         "></div>
         <div style="
           position: absolute;
@@ -69,16 +69,9 @@ const createCustomIcon = (status: ChargingStation['status']) => {
           </svg>
         </div>
       </div>
-      <style>
-        @keyframes pulse {
-          0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
-          50% { opacity: 0.3; transform: translate(-50%, -50%) scale(1.2); }
-        }
-      </style>
     `,
     iconSize: [40, 40],
     iconAnchor: [20, 40],
-    popupAnchor: [0, -35],
   });
 };
 
@@ -133,7 +126,7 @@ function LocationMarker({ position }: LocationMarkerProps) {
           height: 24px;
           background: rgba(0, 153, 216, 0.2);
           border-radius: 50%;
-          animation: userPulse 2s ease-in-out infinite;
+          animation: user-pulse 2s ease-in-out infinite;
         "></div>
         <div style="
           position: absolute;
@@ -148,12 +141,6 @@ function LocationMarker({ position }: LocationMarkerProps) {
           box-shadow: 0 2px 8px rgba(0, 153, 216, 0.4);
         "></div>
       </div>
-      <style>
-        @keyframes userPulse {
-          0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-          50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.5); }
-        }
-      </style>
     `,
     iconSize: [24, 24],
     iconAnchor: [12, 12],
@@ -205,88 +192,6 @@ export function StationMap({
     );
   }
 
-  // Premium popup content renderer
-  const renderPopupContent = (station: ChargingStation) => (
-    <div className="min-w-[260px] p-1">
-      {/* Header gradient */}
-      <div
-        className="h-1 rounded-t-lg mb-3"
-        style={{
-          background: station.status === 'available'
-            ? `linear-gradient(90deg, ${PERUN_COLORS.green}, ${PERUN_COLORS.blue})`
-            : station.status === 'offline'
-            ? PERUN_COLORS.gray
-            : `linear-gradient(90deg, ${PERUN_COLORS.orange}, ${PERUN_COLORS.blue})`
-        }}
-      />
-
-      {/* Station name & status */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1 pr-2">
-          <h3 className="font-bold text-base text-gray-800 leading-tight">{station.name}</h3>
-          <p className="text-xs text-gray-500 mt-0.5">{station.address}</p>
-        </div>
-        <span
-          className="px-2 py-1 rounded-full text-xs font-bold text-white shrink-0"
-          style={{
-            backgroundColor: station.status === 'available'
-              ? PERUN_COLORS.green
-              : station.status === 'offline'
-              ? PERUN_COLORS.gray
-              : PERUN_COLORS.orange
-          }}
-        >
-          {station.status === 'available' ? '✓ Dostupná' : station.status === 'offline' ? '✕ Nedostupná' : '⚡ Obsadená'}
-        </span>
-      </div>
-
-      {/* Connectors */}
-      <div className="space-y-2 mb-3">
-        {station.connectors.map((connector, idx) => (
-          <div
-            key={connector.id || idx}
-            className="flex items-center justify-between p-2 rounded-lg text-xs"
-            style={{
-              backgroundColor: connector.status === 'available'
-                ? 'rgba(141, 198, 63, 0.1)'
-                : connector.status === 'offline'
-                ? 'rgba(156, 163, 175, 0.1)'
-                : 'rgba(247, 148, 29, 0.1)'
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <span
-                className="w-2 h-2 rounded-full"
-                style={{
-                  backgroundColor: connector.status === 'available'
-                    ? PERUN_COLORS.green
-                    : connector.status === 'offline'
-                    ? PERUN_COLORS.gray
-                    : PERUN_COLORS.orange
-                }}
-              />
-              <span className="font-medium text-gray-700">
-                {(connector as { name?: string }).name || `Konektor ${idx + 1}`}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500">{connector.type}</span>
-              <span className="font-bold" style={{ color: PERUN_COLORS.blue }}>{connector.power} kW</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Price */}
-      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-        <span className="text-xs text-gray-500">Cena za kWh</span>
-        <span className="text-lg font-bold" style={{ color: PERUN_COLORS.blue }}>
-          {station.pricePerKwh > 0 ? `${station.pricePerKwh.toFixed(2)} €` : 'Zadarmo'}
-        </span>
-      </div>
-    </div>
-  );
-
   return (
     <MapContainer
       center={userPosition || center}
@@ -316,11 +221,7 @@ export function StationMap({
             eventHandlers={{
               click: () => onStationClick?.(station),
             }}
-          >
-            <Popup>
-              {renderPopupContent(station)}
-            </Popup>
-          </Marker>
+          />
         ))}
 
       {/* Potom vykresliť dostupné (zelené) a obsadené (oranžové) stanice - budú navrchu */}
@@ -335,11 +236,7 @@ export function StationMap({
             eventHandlers={{
               click: () => onStationClick?.(station),
             }}
-          >
-            <Popup>
-              {renderPopupContent(station)}
-            </Popup>
-          </Marker>
+          />
         ))}
     </MapContainer>
   );
