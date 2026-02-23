@@ -184,10 +184,31 @@ function ChargingPageContent() {
           <Button onClick={handleOpenScanner} fullWidth size="lg">
             {t('scanQr')}
           </Button>
+
+          {/* Arrow pointing to Mapa tab */}
+          <div className="w-full flex flex-col items-start mt-12">
+            <p className="text-sm text-[var(--text-secondary)] mb-2 ml-1">
+              alebo vyberte stanicu na mape
+            </p>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="32"
+              height="48"
+              viewBox="0 0 32 48"
+              fill="none"
+              className="text-[var(--text-muted)] ml-3 animate-bounce"
+            >
+              <path
+                d="M16 4 L16 38 M6 30 L16 42 L26 30"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
         </>
       )}
-
-      {/* Manual code entry removed — stations use QR only */}
     </div>
   );
 
