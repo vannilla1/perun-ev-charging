@@ -38,7 +38,6 @@ function ChargingPageContent() {
   const t = useTranslations('charging');
   const { isLoggedIn } = useAuth();
   const searchParams = useSearchParams();
-  const [stationCode, setStationCode] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   const [guestEmail, setGuestEmail] = useState('');
   const [preAuthClientSecret, setPreAuthClientSecret] = useState<string | null>(null);
@@ -55,7 +54,6 @@ function ChargingPageContent() {
     startScanning,
     stopScanning,
     handleQRScan,
-    handleManualCode,
     loadStation,
     selectConnector,
     confirmStartCharging,
@@ -105,15 +103,8 @@ function ChargingPageContent() {
     handleQRScan(data);
   };
 
-  const handleManualStart = () => {
-    if (stationCode.length >= 4) {
-      handleManualCode(stationCode);
-    }
-  };
-
   const handleNewSession = () => {
     reset();
-    setStationCode('');
     setGuestEmail('');
     setPreAuthClientSecret(null);
   };
@@ -196,35 +187,7 @@ function ChargingPageContent() {
         </>
       )}
 
-      {!showScanner && (
-        <>
-          <div
-            className="w-full flex items-center gap-4"
-            style={{ margin: '48px 0' }}
-          >
-            <div className="flex-1 h-px bg-[var(--border)]" />
-            <span className="text-sm text-[var(--text-secondary)]">{t('orEnterCode')}</span>
-            <div className="flex-1 h-px bg-[var(--border)]" />
-          </div>
-
-          <div className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-            <Input
-              placeholder={t('enterCode')}
-              value={stationCode}
-              onChange={(e) => setStationCode(e.target.value.toUpperCase())}
-              className="text-center text-xl tracking-widest font-mono"
-            />
-            <Button
-              onClick={handleManualStart}
-              variant="outline"
-              fullWidth
-              disabled={stationCode.length < 4}
-            >
-              {t('startCharging')}
-            </Button>
-          </div>
-        </>
-      )}
+      {/* Manual code entry removed — stations use QR only */}
     </div>
   );
 
