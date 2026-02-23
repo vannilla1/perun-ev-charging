@@ -128,8 +128,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Skombinovať konektory zo všetkých staníc
-    const allConnectors = validResults.flatMap(r => r.connectors);
+    // Skombinovať konektory zo všetkých staníc — Ľavá/Left vždy prvá
+    const allConnectors = validResults.flatMap(r => r.connectors)
+      .sort((a, b) => {
+        const aName = String(a.name || '').toLowerCase();
+        const bName = String(b.name || '').toLowerCase();
+        const aIsLeft = aName.includes('ľavá') || aName.includes('left') || aName.includes('lav');
+        const bIsLeft = bName.includes('ľavá') || bName.includes('left') || bName.includes('lav');
+        if (aIsLeft && !bIsLeft) return -1;
+        if (!aIsLeft && bIsLeft) return 1;
+        return 0;
+      });
 
     // Názov — použiť spoločný base name (bez L/P suffixu)
     const baseName = validResults[0].name.replace(/ [LP]$/, '').trim();
