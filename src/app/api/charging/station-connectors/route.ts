@@ -69,9 +69,11 @@ async function fetchStationConnectors(
   if (!response.ok) return null;
 
   const data = await response.json();
+  const realStationId = data.id || singleStationId;
   const connectors = (data.connectors || []).map(
     (c: { id: string; number: number; name: string; plugtype: string; maxpower: number | null; state: string }) => ({
       id: c.id,
+      stationId: realStationId,
       number: c.number,
       name: c.name || '',
       plugType: (c.plugtype || '').replace('PLUG_TYPE_', ''),

@@ -48,6 +48,7 @@ interface StationInfo {
 
 interface ConnectorOption {
   id: string;
+  stationId?: string;
   number: number;
   name: string;
   plugType: string;
@@ -392,11 +393,12 @@ export function useCharging(): UseChargingResult {
   }, [stationConnectorsMutation]);
 
   // Výber konektora — načíta detail cez existujúci info endpoint
+  // Používa connector.stationId (reálne UUID) namiesto merged ID
   const selectConnector = useCallback((connector: ConnectorOption) => {
     if (!stationOverview) return;
     setState('connecting');
     stationInfoMutation.mutate({
-      stationId: stationOverview.stationId,
+      stationId: connector.stationId || stationOverview.stationId,
       connectorId: connector.id,
     });
   }, [stationOverview, stationInfoMutation]);
