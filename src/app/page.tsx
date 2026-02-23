@@ -144,15 +144,6 @@ export default function MapPage() {
                 />
               </div>
 
-              {/* Station count badge */}
-              {!isLoading && !error && (
-                <div className="flex items-center gap-1.5 sm:gap-2 bg-white/95 backdrop-blur-md rounded-full px-2.5 sm:px-4 py-1.5 sm:py-2 shadow-lg border border-white/50">
-                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[var(--perun-green)] animate-pulse" />
-                  <span className="text-xs sm:text-sm font-medium text-[var(--text-primary)]">
-                    {filteredStations.length} staníc
-                  </span>
-                </div>
-              )}
             </div>
           </div>
         </div>
