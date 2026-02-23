@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
+import { useSearchParams } from 'next/navigation';
 import { AppLayout, PageHeader } from '@/components/Layout';
 import { Card, CardContent, Button, Input } from '@/components/Common';
 import { useCharging } from '@/hooks';
+import { useAuth } from '@/contexts/AuthContext';
 import { StripeProvider, GuestPaymentForm } from '@/components/Payments';
 
 // Dynamický import QR skenera (potrebuje prístup k window)
@@ -32,8 +34,10 @@ const PlugIcon = () => (
   </svg>
 );
 
-export default function ChargingPage() {
+function ChargingPageContent() {
   const t = useTranslations('charging');
+  const { isLoggedIn } = useAuth();
+  const searchParams = useSearchParams();
   const [stationCode, setStationCode] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   const [guestEmail, setGuestEmail] = useState('');
@@ -43,6 +47,7 @@ export default function ChargingPage() {
     state,
     stats,
     stationInfo,
+    stationOverview,
     error,
     isGuest,
     guestPaymentInfo,
@@ -51,6 +56,8 @@ export default function ChargingPage() {
     stopScanning,
     handleQRScan,
     handleManualCode,
+    loadStation,
+    selectConnector,
     confirmStartCharging,
     initiateGuestPayment,
     confirmGuestPayment,
@@ -73,6 +80,15 @@ export default function ChargingPage() {
       startGuestCharging();
     }
   }, [state, guestPaymentInfo, startGuestCharging]);
+
+  // Auto-load station when stationId param is present (e.g. from map)
+  useEffect(() => {
+    const stationId = searchParams.get('stationId');
+    if (stationId && state === 'idle') {
+      loadStation(stationId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleOpenScanner = () => {
     setShowScanner(true);
@@ -212,6 +228,91 @@ export default function ChargingPage() {
     </div>
   );
 
+  const renderConnectorSelectState = () => (
+    <div className="p-4 sm:p-6 pt-6 sm:pt-8">
+      {/* Station name & address */}
+      <div className="text-center mb-6">
+        <h2 className="text-xl font-bold text-[var(--text-primary)] mb-1">
+          {stationOverview?.name || 'Nabíjacia stanica'}
+        </h2>
+        {stationOverview?.address && (
+          <p className="text-sm text-[var(--text-secondary)]">
+            {stationOverview.address}
+          </p>
+        )}
+      </div>
+
+      {/* Connector selection label */}
+      <p className="text-sm font-medium text-[var(--text-secondary)] mb-3">
+        Vyberte konektor:
+      </p>
+
+      {/* Connector cards */}
+      <div className="space-y-3 mb-6">
+        {stationOverview?.connectors.map((connector) => {
+          const isAvailable = connector.state === 'AVAILABLE';
+          return (
+            <button
+              key={connector.id}
+              onClick={() => isAvailable && selectConnector(connector)}
+              disabled={!isAvailable}
+              className={`w-full text-left rounded-xl p-4 transition-colors ${
+                isAvailable
+                  ? 'border-2 border-[var(--primary)] bg-[var(--surface-card)] hover:bg-[rgba(0,212,255,0.08)] cursor-pointer'
+                  : 'border-2 border-[var(--border)] bg-[var(--surface-card)] opacity-50 cursor-not-allowed'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {/* Status dot */}
+                  <div
+                    className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                      isAvailable ? 'bg-[var(--secondary)]' : 'bg-[var(--text-muted)]'
+                    }`}
+                  />
+                  <div>
+                    <p className="font-semibold text-[var(--text-primary)]">
+                      {connector.name || `Konektor ${connector.number}`}
+                    </p>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      {connector.plugType}{connector.maxPower ? ` • ${connector.maxPower} kW` : ''}
+                    </p>
+                  </div>
+                </div>
+                {/* Status badge */}
+                <span
+                  className={`text-xs font-medium px-2 py-1 rounded-full ${
+                    isAvailable
+                      ? 'bg-green-900/30 text-green-400'
+                      : connector.state === 'OCCUPIED'
+                        ? 'bg-gray-700/30 text-gray-400'
+                        : 'bg-gray-700/30 text-gray-400'
+                  }`}
+                >
+                  {isAvailable
+                    ? 'Dostupný'
+                    : connector.state === 'OCCUPIED'
+                      ? 'Obsadený'
+                      : 'Nedostupný'}
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Bottom buttons */}
+      <div className="space-y-3">
+        <Button onClick={handleNewSession} variant="outline" fullWidth>
+          Skenovať QR kód
+        </Button>
+        <Button onClick={handleNewSession} variant="ghost" fullWidth>
+          Zrušiť
+        </Button>
+      </div>
+    </div>
+  );
+
   const renderConnectingState = () => (
     <div className="flex flex-col items-center justify-center p-6 min-h-[400px]">
       <div className="animate-pulse mb-6">
@@ -304,27 +405,45 @@ export default function ChargingPage() {
         </CardContent>
       </Card>
 
-      {/* Tlačidlá - Guest nabíjanie */}
+      {/* Tlačidlá - Auth-aware */}
       <div className="space-y-3">
-        <Button
-          onClick={initiateGuestPayment}
-          fullWidth
-          size="lg"
-          disabled={stationInfo?.status !== 'AVAILABLE'}
-        >
-          Nabíjať bez registrácie
-        </Button>
-        <Button
-          onClick={confirmStartCharging}
-          variant="outline"
-          fullWidth
-          disabled={stationInfo?.status !== 'AVAILABLE'}
-        >
-          Mám účet - Prihlásiť sa
-        </Button>
-        <Button onClick={handleNewSession} variant="ghost" fullWidth>
-          Zrušiť
-        </Button>
+        {isLoggedIn ? (
+          <>
+            <Button
+              onClick={confirmStartCharging}
+              fullWidth
+              size="lg"
+              disabled={stationInfo?.status !== 'AVAILABLE'}
+            >
+              Spustiť nabíjanie
+            </Button>
+            <Button onClick={handleNewSession} variant="ghost" fullWidth>
+              Zrušiť
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              onClick={initiateGuestPayment}
+              fullWidth
+              size="lg"
+              disabled={stationInfo?.status !== 'AVAILABLE'}
+            >
+              Nabíjať bez registrácie
+            </Button>
+            <Button
+              onClick={() => { window.location.href = '/login?redirect=/charging'; }}
+              variant="outline"
+              fullWidth
+              disabled={stationInfo?.status !== 'AVAILABLE'}
+            >
+              Prihlásiť sa
+            </Button>
+            <Button onClick={handleNewSession} variant="ghost" fullWidth>
+              Zrušiť
+            </Button>
+          </>
+        )}
       </div>
 
       {/* Upozornenie ak nie je dostupná */}
@@ -614,6 +733,8 @@ export default function ChargingPage() {
 
   const getPageTitle = () => {
     switch (state) {
+      case 'connector_select':
+        return 'Výber konektora';
       case 'station_info':
         return 'Nabíjacia stanica';
       case 'payment':
@@ -640,6 +761,7 @@ export default function ChargingPage() {
         {state === 'idle' && renderIdleState()}
         {state === 'scanning' && renderIdleState()}
         {state === 'connecting' && renderConnectingState()}
+        {state === 'connector_select' && renderConnectorSelectState()}
         {state === 'station_info' && renderStationInfoState()}
         {state === 'payment' && renderPaymentState()}
         {state === 'authorizing' && renderAuthorizingState()}
@@ -650,5 +772,13 @@ export default function ChargingPage() {
         {state === 'error' && renderErrorState()}
       </div>
     </AppLayout>
+  );
+}
+
+export default function ChargingPage() {
+  return (
+    <Suspense>
+      <ChargingPageContent />
+    </Suspense>
   );
 }
