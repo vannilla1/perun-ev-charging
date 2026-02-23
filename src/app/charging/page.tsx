@@ -185,28 +185,26 @@ function ChargingPageContent() {
             {t('scanQr')}
           </Button>
 
-          {/* Arrow pointing to Mapa tab */}
-          <div className="w-full flex flex-col items-start mt-12">
-            <p className="text-sm text-[var(--text-secondary)] mb-2 ml-1">
-              alebo vyberte stanicu na mape
-            </p>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="32"
-              height="48"
-              viewBox="0 0 32 48"
-              fill="none"
-              className="text-[var(--text-muted)] ml-3 animate-bounce"
-            >
-              <path
-                d="M16 4 L16 38 M6 30 L16 42 L26 30"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+          {/* Divider + Map link */}
+          <div className="w-full flex items-center gap-4 my-8">
+            <div className="flex-1 h-px bg-[var(--border)]" />
+            <span className="text-sm text-[var(--text-muted)]">alebo</span>
+            <div className="flex-1 h-px bg-[var(--border)]" />
           </div>
+
+          <Button
+            onClick={() => { window.location.href = '/'; }}
+            variant="outline"
+            fullWidth
+          >
+            <span className="flex items-center justify-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Vybrať stanicu na mape
+            </span>
+          </Button>
         </>
       )}
     </div>
