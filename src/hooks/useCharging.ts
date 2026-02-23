@@ -16,6 +16,7 @@ export type ChargingState =
   | 'idle'
   | 'scanning'
   | 'connecting'
+  | 'connector_select'
   | 'station_info'
   | 'payment'        // Guest payment collection
   | 'authorizing'    // Pre-auth in progress
@@ -45,6 +46,22 @@ interface StationInfo {
   originalUrl?: string;
 }
 
+interface ConnectorOption {
+  id: string;
+  number: number;
+  name: string;
+  plugType: string;
+  maxPower: number | null;
+  state: string;
+}
+
+interface StationOverview {
+  stationId: string;
+  name: string;
+  address: string;
+  connectors: ConnectorOption[];
+}
+
 interface GuestPaymentInfo {
   email: string;
   paymentIntentId: string;
@@ -57,6 +74,7 @@ interface UseChargingResult {
   sessionId: string | null;
   stats: ChargingStats;
   stationInfo: StationInfo | null;
+  stationOverview: StationOverview | null;
   error: string | null;
   isGuest: boolean;
   guestPaymentInfo: GuestPaymentInfo | null;
@@ -65,6 +83,8 @@ interface UseChargingResult {
   stopScanning: () => void;
   handleQRScan: (data: string) => void;
   handleManualCode: (code: string) => void;
+  loadStation: (stationId: string) => void;
+  selectConnector: (connector: ConnectorOption) => void;
   confirmStartCharging: () => void;
   initiateGuestPayment: () => void;
   createPreAuth: (email: string) => Promise<void>;
@@ -83,6 +103,7 @@ export function useCharging(): UseChargingResult {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stationInfo, setStationInfo] = useState<StationInfo | null>(null);
+  const [stationOverview, setStationOverview] = useState<StationOverview | null>(null);
   const [isGuest, setIsGuest] = useState(false);
   const [guestPaymentInfo, setGuestPaymentInfo] = useState<GuestPaymentInfo | null>(null);
   const [stats, setStats] = useState<ChargingStats>({
@@ -119,6 +140,29 @@ export function useCharging(): UseChargingResult {
     onError: (err) => {
       setState('error');
       setError(err instanceof Error ? err.message : 'Nepodarilo sa načítať informácie o stanici');
+    },
+  });
+
+  // Mutation pre načítanie konektorov stanice (priamy flow z mapy)
+  const stationConnectorsMutation = useMutation({
+    mutationFn: async (stationId: string) => {
+      const res = await fetch(`/api/charging/station-connectors?stationId=${stationId}`);
+      if (!res.ok) throw new Error('Nepodarilo sa načítať konektory');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setStationOverview({
+        stationId: data.stationId,
+        name: data.name,
+        address: data.address,
+        connectors: data.connectors,
+      });
+      setState('connector_select');
+      setError(null);
+    },
+    onError: (err) => {
+      setState('error');
+      setError(err instanceof Error ? err.message : 'Nepodarilo sa načítať stanicu');
     },
   });
 
@@ -341,6 +385,22 @@ export function useCharging(): UseChargingResult {
     }
   }, [stationInfoMutation]);
 
+  // Priame načítanie stanice z mapy (bez QR)
+  const loadStation = useCallback((stationId: string) => {
+    setState('connecting');
+    stationConnectorsMutation.mutate(stationId);
+  }, [stationConnectorsMutation]);
+
+  // Výber konektora — načíta detail cez existujúci info endpoint
+  const selectConnector = useCallback((connector: ConnectorOption) => {
+    if (!stationOverview) return;
+    setState('connecting');
+    stationInfoMutation.mutate({
+      stationId: stationOverview.stationId,
+      connectorId: connector.id,
+    });
+  }, [stationOverview, stationInfoMutation]);
+
   // Pre registrovaných používateľov
   const confirmStartCharging = useCallback(() => {
     if (stationInfo) {
@@ -398,6 +458,7 @@ export function useCharging(): UseChargingResult {
     setState('idle');
     setSessionId(null);
     setStationInfo(null);
+    setStationOverview(null);
     setError(null);
     setIsGuest(false);
     setGuestPaymentInfo(null);
@@ -409,6 +470,7 @@ export function useCharging(): UseChargingResult {
     sessionId,
     stats,
     stationInfo,
+    stationOverview,
     error,
     isGuest,
     guestPaymentInfo,
@@ -417,6 +479,8 @@ export function useCharging(): UseChargingResult {
     stopScanning,
     handleQRScan,
     handleManualCode,
+    loadStation,
+    selectConnector,
     confirmStartCharging,
     initiateGuestPayment,
     createPreAuth,
