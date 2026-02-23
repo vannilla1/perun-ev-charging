@@ -50,8 +50,46 @@ async function getAccessToken(): Promise<string | null> {
   }
 }
 
+// Fetch jednej stanice a vrátiť konektory
+async function fetchStationConnectors(
+  singleStationId: string,
+  accessToken: string,
+): Promise<{ id: string; name: string; address: string; connectors: Array<Record<string, unknown>> } | null> {
+  const response = await fetch(
+    `${ECARUP_API_BASE}/v1/station/${singleStationId}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json',
+      },
+      cache: 'no-store',
+    }
+  );
+
+  if (!response.ok) return null;
+
+  const data = await response.json();
+  const connectors = (data.connectors || []).map(
+    (c: { id: string; number: number; name: string; plugtype: string; maxpower: number | null; state: string }) => ({
+      id: c.id,
+      number: c.number,
+      name: c.name || '',
+      plugType: (c.plugtype || '').replace('PLUG_TYPE_', ''),
+      maxPower: c.maxpower ? c.maxpower / 1000 : null,
+      state: c.state || 'UNKNOWN',
+    })
+  );
+
+  return {
+    id: data.id || singleStationId,
+    name: data.name || '',
+    address: [data.street, data.city].filter(Boolean).join(', '),
+    connectors,
+  };
+}
+
 // GET /api/charging/station-connectors?stationId=X
-// Returns all connectors for a given station
+// Podporuje zlúčené L/P stanice (formát "uuid1_uuid2") — fetchne obe a skombinuje konektory
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -73,48 +111,34 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const stationResponse = await fetch(
-      `${ECARUP_API_BASE}/v1/station/${stationId}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/json',
-        },
-        cache: 'no-store',
-      }
+    // Rozdeliť zlúčené ID (L/P páry majú formát "uuid1_uuid2")
+    const stationIds = stationId.split('_').filter(Boolean);
+
+    // Fetch všetky stanice paralelne
+    const results = await Promise.all(
+      stationIds.map(id => fetchStationConnectors(id, accessToken))
     );
 
-    if (!stationResponse.ok) {
-      if (stationResponse.status === 404) {
-        return NextResponse.json(
-          { error: 'Station not found' },
-          { status: 404 }
-        );
-      }
+    const validResults = results.filter(Boolean) as NonNullable<typeof results[number]>[];
+
+    if (validResults.length === 0) {
       return NextResponse.json(
-        { error: `Failed to fetch station: ${stationResponse.status}` },
-        { status: stationResponse.status }
+        { error: 'Station not found' },
+        { status: 404 }
       );
     }
 
-    const data = await stationResponse.json();
+    // Skombinovať konektory zo všetkých staníc
+    const allConnectors = validResults.flatMap(r => r.connectors);
 
-    const connectors = (data.connectors || []).map(
-      (c: { id: string; number: number; name: string; plugtype: string; maxpower: number | null; state: string }) => ({
-        id: c.id,
-        number: c.number,
-        name: c.name,
-        plugType: (c.plugtype || '').replace('PLUG_TYPE_', ''),
-        maxPower: c.maxpower ? c.maxpower / 1000 : null,
-        state: c.state || 'UNKNOWN',
-      })
-    );
+    // Názov — použiť spoločný base name (bez L/P suffixu)
+    const baseName = validResults[0].name.replace(/ [LP]$/, '').trim();
 
     return NextResponse.json({
-      stationId: data.id || stationId,
-      name: data.name,
-      address: [data.street, data.city].filter(Boolean).join(', '),
-      connectors,
+      stationId,
+      name: baseName,
+      address: validResults[0].address,
+      connectors: allConnectors,
     });
   } catch (error) {
     console.error('Station connectors error:', error);
