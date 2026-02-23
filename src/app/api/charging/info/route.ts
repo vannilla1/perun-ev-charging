@@ -161,6 +161,29 @@ export async function POST(request: NextRequest) {
       'UNKNOWN': 'neznámy stav',
     };
 
+    // Cena — získať z hlavného stations cache
+    let pricePerKwh = 0.40;  // fallback
+    let pricePerH = 0;
+    try {
+      const stationsRes = await fetch(
+        `${request.nextUrl.origin}/api/ecarup/stations`,
+        { cache: 'no-store' }
+      );
+      if (stationsRes.ok) {
+        const stationsData = await stationsRes.json();
+        const matchedStation = stationsData.stations?.find(
+          (s: Record<string, unknown>) => s.id === resolvedStationId
+        );
+        if (matchedStation?.connectors?.[0]) {
+          const c = matchedStation.connectors[0];
+          if (c.pricePerKwh != null) pricePerKwh = c.pricePerKwh;
+          if (c.pricePerH != null) pricePerH = c.pricePerH;
+        }
+      }
+    } catch {
+      // Use fallback price
+    }
+
     return NextResponse.json({
       success: true,
       stationId: resolvedStationId,
@@ -177,10 +200,9 @@ export async function POST(request: NextRequest) {
         plugType: connector.plugtype?.replace('PLUG_TYPE_', '') || 'Type 2',
         description: connector.description,
       },
-      // Cena - hardcoded zatiaľ, eCarUp API to možno poskytuje
       pricing: {
-        pricePerKwh: 0.44,
-        pricePerHour: 0.00,
+        pricePerKwh,
+        pricePerHour: pricePerH,
         currency: 'EUR',
       },
       originalUrl,
