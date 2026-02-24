@@ -114,12 +114,13 @@ export default function ProfilePage() {
     router.push('/');
   };
 
-  // TODO: načítať reálne štatistiky z API
-  const mockStats = {
-    totalCharges: 0,
-    totalEnergy: 0,
-    totalSpent: 0,
-  };
+  // Demo účty majú testovacie štatistiky, reálni používatelia zatiaľ 0
+  const DEMO_EMAILS = ['demo@perun.sk', 'test@perun.sk'];
+  const isDemoAccount = user?.email ? DEMO_EMAILS.includes(user.email.toLowerCase()) : false;
+
+  const mockStats = isDemoAccount
+    ? { totalCharges: 23, totalEnergy: 428, totalSpent: 85 }
+    : { totalCharges: 0, totalEnergy: 0, totalSpent: 0 };
 
   // Loading stav počas inicializácie autentifikácie
   if (isLoading) {
@@ -265,7 +266,7 @@ export default function ProfilePage() {
         <Card className="overflow-hidden" padding="none" style={{ marginBottom: '20px' }}>
           <MenuItem icon={<UserIcon />} label={t('personalInfo')} />
           <div className="border-t border-[var(--border-light)]" />
-          <MenuItem icon={<CreditCardIcon />} label={t('paymentMethods')} />
+          <MenuItem icon={<CreditCardIcon />} label={t('paymentMethods')} value={isDemoAccount ? 'Visa •••• 1234' : undefined} />
           <div className="border-t border-[var(--border-light)]" />
           <MenuItem icon={<BellIcon />} label={t('notifications')} />
           <div className="border-t border-[var(--border-light)]" />
