@@ -114,11 +114,11 @@ export default function ProfilePage() {
     router.push('/');
   };
 
-  // Mock stats - v reálnej app by sa načítavali z API
+  // TODO: načítať reálne štatistiky z API
   const mockStats = {
-    totalCharges: 23,
-    totalEnergy: 428,
-    totalSpent: 85,
+    totalCharges: 0,
+    totalEnergy: 0,
+    totalSpent: 0,
   };
 
   // Loading stav počas inicializácie autentifikácie
@@ -265,7 +265,7 @@ export default function ProfilePage() {
         <Card className="overflow-hidden" padding="none" style={{ marginBottom: '20px' }}>
           <MenuItem icon={<UserIcon />} label={t('personalInfo')} />
           <div className="border-t border-[var(--border-light)]" />
-          <MenuItem icon={<CreditCardIcon />} label={t('paymentMethods')} value="Visa •••• 1234" />
+          <MenuItem icon={<CreditCardIcon />} label={t('paymentMethods')} />
           <div className="border-t border-[var(--border-light)]" />
           <MenuItem icon={<BellIcon />} label={t('notifications')} />
           <div className="border-t border-[var(--border-light)]" />
