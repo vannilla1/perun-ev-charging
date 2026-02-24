@@ -1,6 +1,19 @@
 import crypto from 'crypto';
 import { getDb, UserDocument, COLLECTIONS } from '../mongodb';
 
+// In-memory fallback keď MongoDB nie je dostupné
+const inMemoryUsers = new Map<string, UserDocument>();
+
+async function isMongoAvailable(): Promise<boolean> {
+  try {
+    const db = await getDb();
+    await db.command({ ping: 1 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Hash hesla
 export function hashPassword(password: string): string {
   return crypto.createHash('sha256').update(password).digest('hex');
@@ -27,16 +40,23 @@ export function generateRefreshToken(userId: string): string {
 
 // Nájsť používateľa podľa emailu
 export async function findUserByEmail(email: string): Promise<UserDocument | null> {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Skúsiť MongoDB
   try {
-    const db = await getDb();
-    const user = await db.collection<UserDocument>(COLLECTIONS.USERS).findOne({
-      email: email.toLowerCase().trim(),
-    });
-    return user;
+    if (await isMongoAvailable()) {
+      const db = await getDb();
+      const user = await db.collection<UserDocument>(COLLECTIONS.USERS).findOne({
+        email: normalizedEmail,
+      });
+      if (user) return user;
+    }
   } catch (error) {
-    console.error('[UserService] Error finding user:', error);
-    return null;
+    console.warn('[UserService] MongoDB not available, using in-memory fallback');
   }
+
+  // Fallback na in-memory
+  return inMemoryUsers.get(normalizedEmail) || null;
 }
 
 // Vytvoriť nového používateľa
@@ -47,8 +67,6 @@ export async function createUser(data: {
   lastName?: string;
   phone?: string;
 }): Promise<UserDocument> {
-  const db = await getDb();
-
   const now = new Date();
   const user: UserDocument = {
     email: data.email.toLowerCase().trim(),
@@ -62,27 +80,32 @@ export async function createUser(data: {
     ecarupLinked: false,
   };
 
-  const result = await db.collection<UserDocument>(COLLECTIONS.USERS).insertOne(user);
+  // Skúsiť MongoDB
+  try {
+    if (await isMongoAvailable()) {
+      const db = await getDb();
+      const result = await db.collection<UserDocument>(COLLECTIONS.USERS).insertOne(user);
+      return { ...user, _id: result.insertedId.toString() };
+    }
+  } catch (error) {
+    console.warn('[UserService] MongoDB insert failed, using in-memory:', error);
+  }
 
-  return {
-    ...user,
-    _id: result.insertedId.toString(),
-  };
+  // Fallback na in-memory
+  const id = `mem-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const memUser = { ...user, _id: id };
+  inMemoryUsers.set(user.email, memUser);
+  console.log(`[UserService] User stored in-memory: ${user.email} (id: ${id})`);
+  return memUser;
 }
 
 // Overiť heslo
 export async function verifyPassword(email: string, password: string): Promise<UserDocument | null> {
   const user = await findUserByEmail(email);
-
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   const passwordHash = hashPassword(password);
-
-  if (user.passwordHash !== passwordHash) {
-    return null;
-  }
+  if (user.passwordHash !== passwordHash) return null;
 
   return user;
 }
@@ -132,12 +155,14 @@ export async function linkEcarupAccount(
 // Získať počet používateľov
 export async function getUserCount(): Promise<number> {
   try {
-    const db = await getDb();
-    return await db.collection(COLLECTIONS.USERS).countDocuments();
-  } catch (error) {
-    console.error('[UserService] Error getting user count:', error);
-    return 0;
+    if (await isMongoAvailable()) {
+      const db = await getDb();
+      return await db.collection(COLLECTIONS.USERS).countDocuments();
+    }
+  } catch {
+    // fallback
   }
+  return inMemoryUsers.size;
 }
 
 // Pomocná funkcia - formátovanie používateľa pre API odpoveď
