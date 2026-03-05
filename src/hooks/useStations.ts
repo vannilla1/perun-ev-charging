@@ -2,13 +2,17 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { getStations, getNearbyStations, getStationById, filterStations } from '@/services/api/stationService';
+import { useAuth } from '@/contexts';
 import type { StationFilters } from '@/types';
 
 // Hook pre získanie všetkých staníc
 export function useStations(filters?: StationFilters) {
+  const { user } = useAuth();
+  const userEmail = user?.email || undefined;
+
   const query = useQuery({
-    queryKey: ['stations'],
-    queryFn: () => getStations(),
+    queryKey: ['stations', userEmail],
+    queryFn: () => getStations(undefined, userEmail),
     staleTime: 2 * 60 * 1000, // 2 minúty
   });
 

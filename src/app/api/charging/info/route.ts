@@ -164,9 +164,17 @@ export async function POST(request: NextRequest) {
     // Cena — získať z hlavného stations cache
     let pricePerKwh = 0.40;  // fallback
     let pricePerH = 0;
+    let userPricePerKwh: number | undefined;
+    let userPricePerH: number | undefined;
+
+    // Získať userEmail z request body pre individuálne ceny
+    const userEmail = body.userEmail?.toLowerCase() || null;
+
     try {
+      const stationsParams = new URLSearchParams();
+      if (userEmail) stationsParams.set('userEmail', userEmail);
       const stationsRes = await fetch(
-        `${request.nextUrl.origin}/api/ecarup/stations`,
+        `${request.nextUrl.origin}/api/ecarup/stations?${stationsParams}`,
         { cache: 'no-store' }
       );
       if (stationsRes.ok) {
@@ -178,6 +186,8 @@ export async function POST(request: NextRequest) {
           const c = matchedStation.connectors[0];
           if (c.pricePerKwh != null) pricePerKwh = c.pricePerKwh;
           if (c.pricePerH != null) pricePerH = c.pricePerH;
+          if (c.userPricePerKwh != null) userPricePerKwh = c.userPricePerKwh;
+          if (c.userPricePerH != null) userPricePerH = c.userPricePerH;
         }
       }
     } catch {
@@ -203,6 +213,8 @@ export async function POST(request: NextRequest) {
       pricing: {
         pricePerKwh,
         pricePerHour: pricePerH,
+        userPricePerKwh,
+        userPricePerHour: userPricePerH,
         currency: 'EUR',
       },
       originalUrl,

@@ -10,6 +10,7 @@ import {
   formatDuration,
   getStationInfo,
 } from '@/services/api/chargingService';
+import { useAuth } from '@/contexts';
 
 // Extended states to include payment flow
 export type ChargingState =
@@ -42,6 +43,8 @@ interface StationInfo {
   plugType: string;
   pricePerKwh: number;
   pricePerH: number;
+  userPricePerKwh?: number;  // Individuálna cena pre špeciálneho používateľa
+  userPricePerH?: number;
   status: string;
   originalUrl?: string;
 }
@@ -100,6 +103,7 @@ const DEFAULT_PREAUTH_AMOUNT = 30; // EUR
 
 export function useCharging(): UseChargingResult {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [state, setState] = useState<ChargingState>('idle');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -117,7 +121,7 @@ export function useCharging(): UseChargingResult {
   // Mutation pre získanie info o stanici
   const stationInfoMutation = useMutation({
     mutationFn: ({ stationId, connectorId, originalUrl }: { stationId: string; connectorId: string; originalUrl?: string }) =>
-      getStationInfo(stationId, connectorId, originalUrl),
+      getStationInfo(stationId, connectorId, originalUrl, user?.email),
     onSuccess: (data) => {
       if (data.redirectUrl) {
         window.location.href = data.redirectUrl;
@@ -132,6 +136,8 @@ export function useCharging(): UseChargingResult {
         plugType: data.station?.plugType || 'Type 2',
         pricePerKwh: data.pricing?.pricePerKwh ?? 0,
         pricePerH: data.pricing?.pricePerHour ?? 0,
+        userPricePerKwh: data.pricing?.userPricePerKwh,
+        userPricePerH: data.pricing?.userPricePerHour,
         status: data.status || 'available',
         originalUrl: data.originalUrl,
       });

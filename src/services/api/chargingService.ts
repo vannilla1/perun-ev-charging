@@ -28,6 +28,8 @@ interface StartChargingResponse {
   pricing?: {
     pricePerKwh?: number;
     pricePerHour?: number;
+    userPricePerKwh?: number;
+    userPricePerHour?: number;
     currency?: string;
   };
 }
@@ -76,7 +78,8 @@ export async function getActiveCharging(
 export async function getStationInfo(
   stationId: string,
   connectorId: string,
-  originalUrl?: string
+  originalUrl?: string,
+  userEmail?: string
 ): Promise<StartChargingResponse> {
   try {
     const response = await fetch('/api/charging/info', {
@@ -84,7 +87,7 @@ export async function getStationInfo(
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ stationId, connectorId, originalUrl }),
+      body: JSON.stringify({ stationId, connectorId, originalUrl, userEmail }),
     });
 
     const data = await response.json();

@@ -11,6 +11,8 @@ export interface ChargingStation {
   connectors: Connector[];
   pricePerKwh: number;
   pricePerH?: number;
+  userPricePerKwh?: number;  // Individuálna cena pre špeciálneho používateľa
+  userPricePerH?: number;
   operator: string;
   openingHours?: string;
   amenities?: string[];
@@ -27,6 +29,8 @@ export interface Connector {
   power: number; // kW
   status: ConnectorStatus;
   pricePerKwh?: number;
+  userPricePerKwh?: number;  // Individuálna cena pre špeciálneho používateľa
+  userPricePerH?: number;
   currentSession?: ChargingSession;
 }
 

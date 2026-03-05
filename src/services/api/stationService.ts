@@ -30,6 +30,8 @@ interface ECarUpConnector {
   state?: string;  // "AVAILABLE" alebo "UNAVAILABLE" z detailu stanice
   pricePerKwh?: number;
   pricePerH?: number;
+  userPricePerKwh?: number;  // Individuálna cena pre špeciálneho používateľa
+  userPricePerH?: number;
   access?: {
     type: string;  // "PUBLIC" alebo "PRIVATE"
   };
@@ -78,9 +80,13 @@ function mapECarUpStation(station: ECarUpStation): ChargingStation {
       power: Math.round((c.maxpower || 0) / 1000), // Konverzia z W na kW
       status: mapConnectorStatus(c.state || c.status || 'Offline'),
       pricePerKwh: c.pricePerKwh,
+      userPricePerKwh: c.userPricePerKwh,
+      userPricePerH: c.userPricePerH,
     })),
     pricePerKwh: station.connectors?.[0]?.pricePerKwh ?? 0,
     pricePerH: station.connectors?.[0]?.pricePerH ?? 0,
+    userPricePerKwh: station.connectors?.[0]?.userPricePerKwh,
+    userPricePerH: station.connectors?.[0]?.userPricePerH,
     operator: station.stationGroups?.[0]?.name || 'ePerun',
   };
 }
@@ -185,10 +191,12 @@ function mergeNearbyStations(stations: ChargingStation[]): ChargingStation[] {
 }
 
 // Získanie všetkých staníc cez server-side proxy (kvôli CORS)
-export async function getStations(filter: number = STATION_FILTER.ALL): Promise<ChargingStation[]> {
+export async function getStations(filter: number = STATION_FILTER.ALL, userEmail?: string): Promise<ChargingStation[]> {
   try {
     // Použiť lokálny API proxy namiesto priameho volania na eCarUp (kvôli CORS)
-    const response = await fetch(`/api/ecarup/stations?filter=${filter}`);
+    const params = new URLSearchParams({ filter: String(filter) });
+    if (userEmail) params.set('userEmail', userEmail);
+    const response = await fetch(`/api/ecarup/stations?${params}`);
 
     if (!response.ok) {
       throw new Error(`API returned ${response.status}`);

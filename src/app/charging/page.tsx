@@ -365,14 +365,35 @@ function ChargingPageContent() {
             </div>
 
             {/* Cena za kWh */}
-            <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
-              <span className="text-[var(--text-secondary)]">Cena za energiu</span>
-              <span className="font-semibold text-[var(--accent)]">
-                {stationInfo?.pricePerKwh != null && stationInfo.pricePerKwh > 0
-                  ? `${stationInfo.pricePerKwh.toFixed(2)} EUR/kWh`
-                  : 'Zadarmo'}
-              </span>
-            </div>
+            {stationInfo?.userPricePerKwh != null ? (
+              <>
+                <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
+                  <span className="text-[var(--text-secondary)]">Vaša cena za energiu</span>
+                  <span className="font-semibold text-[var(--perun-green)]">
+                    {stationInfo.userPricePerKwh > 0
+                      ? `${stationInfo.userPricePerKwh.toFixed(2)} EUR/kWh`
+                      : 'Zadarmo'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
+                  <span className="text-[var(--text-muted)] text-sm">Verejná cena</span>
+                  <span className="text-sm text-[var(--text-muted)] line-through">
+                    {stationInfo.pricePerKwh > 0
+                      ? `${stationInfo.pricePerKwh.toFixed(2)} EUR/kWh`
+                      : 'Zadarmo'}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
+                <span className="text-[var(--text-secondary)]">Cena za energiu</span>
+                <span className="font-semibold text-[var(--accent)]">
+                  {stationInfo?.pricePerKwh != null && stationInfo.pricePerKwh > 0
+                    ? `${stationInfo.pricePerKwh.toFixed(2)} EUR/kWh`
+                    : 'Zadarmo'}
+                </span>
+              </div>
+            )}
 
             {/* Cena za čas */}
             <div className="flex justify-between items-center py-2">

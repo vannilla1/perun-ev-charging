@@ -344,12 +344,28 @@ export default function MapPage() {
                 {/* Price and actions - Responzívne */}
                 <div className="flex flex-col xs:flex-row items-start xs:items-center justify-between pt-3 sm:pt-4 border-t border-[var(--border-light)] gap-3 xs:gap-0">
                   <div>
-                    <p className="text-[10px] sm:text-xs text-[var(--text-muted)] mb-0.5">Cena za kWh</p>
-                    <p className="text-xl sm:text-2xl font-bold text-[var(--perun-blue)]">
-                      {selectedStation.pricePerKwh > 0
-                        ? <>{selectedStation.pricePerKwh.toFixed(2)} <span className="text-sm sm:text-base font-normal">€</span></>
-                        : 'Zadarmo'}
-                    </p>
+                    {selectedStation.userPricePerKwh != null ? (
+                      <>
+                        <p className="text-[10px] sm:text-xs text-[var(--text-muted)] mb-0.5">Vaša cena za kWh</p>
+                        <p className="text-xl sm:text-2xl font-bold text-[var(--perun-green)]">
+                          {selectedStation.userPricePerKwh > 0
+                            ? <>{selectedStation.userPricePerKwh.toFixed(2)} <span className="text-sm sm:text-base font-normal">€</span></>
+                            : 'Zadarmo'}
+                        </p>
+                        <p className="text-[10px] sm:text-xs text-[var(--text-muted)] mt-1">
+                          Verejná cena: <span className="line-through">{selectedStation.pricePerKwh > 0 ? `${selectedStation.pricePerKwh.toFixed(2)} €` : 'Zadarmo'}</span>
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-[10px] sm:text-xs text-[var(--text-muted)] mb-0.5">Cena za kWh</p>
+                        <p className="text-xl sm:text-2xl font-bold text-[var(--perun-blue)]">
+                          {selectedStation.pricePerKwh > 0
+                            ? <>{selectedStation.pricePerKwh.toFixed(2)} <span className="text-sm sm:text-base font-normal">€</span></>
+                            : 'Zadarmo'}
+                        </p>
+                      </>
+                    )}
                   </div>
                   <div className="flex gap-2 sm:gap-3 w-full xs:w-auto">
                     <button

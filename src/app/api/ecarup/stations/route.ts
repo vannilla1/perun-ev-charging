@@ -22,6 +22,10 @@ let stationPricesCache: Map<string, { pricePerKwh: number; pricePerH: number }> 
 let pricesCacheExpiry: number | null = null;
 const PRICES_CACHE_TTL = 60 * 60 * 1000; // 1 hodina
 
+// Cache pre individuálne ceny špeciálnych používateľov per stanica
+// Map<stationId, Map<email, { pricePerKwh, pricePerH }>>
+let stationUserPricesCache: Map<string, Map<string, { pricePerKwh: number; pricePerH: number }>> = new Map();
+
 // Cache pre špeciálnych používateľov (emaily s individuálnymi cenami)
 let stationSpecialUsersCache: Map<string, Set<string>> = new Map();
 
@@ -120,13 +124,13 @@ async function getStationDetail(stationId: string, accessToken: string): Promise
   }
 }
 
-// Získanie verejnej ceny stanice z charging history
+// Získanie verejnej ceny stanice z charging history + individuálnych cien špeciálnych používateľov
 // Filtruje špeciálne/individuálne ceny viazané na konkrétnych používateľov
 async function getStationPrice(
   stationId: string,
   accessToken: string,
   specialUserEmails: Set<string>,
-): Promise<{ id: string; pricePerKwh: number; pricePerH: number } | null> {
+): Promise<{ id: string; pricePerKwh: number; pricePerH: number; userPrices: Map<string, { pricePerKwh: number; pricePerH: number }> } | null> {
   try {
     const response = await fetch(
       `${ECARUP_API_BASE}/v1/history/station/${stationId}`,
@@ -146,12 +150,13 @@ async function getStationPrice(
     const data = await response.json();
     const histories = data.histories || [];
 
-    // 1. Hľadať verejnú cenu — záznamy od NIE-špeciálnych používateľov
-    // Špeciálni = email v zozname specialUsers (majú individuálne ceny)
-    // Akceptujeme anonymné tokeny (väčšina verejných používateľov), ale len ak
-    // sú nedávne (< 6 mesiacov), lebo ceny sa menia a staré záznamy sú nespoľahlivé
     const SIX_MONTHS_MS = 180 * 24 * 60 * 60 * 1000;
     const cutoffDate = new Date(Date.now() - SIX_MONTHS_MS);
+
+    // Zbierať individuálne ceny špeciálnych používateľov (najnovšia cena pre každého)
+    const userPrices = new Map<string, { pricePerKwh: number; pricePerH: number }>();
+
+    let publicPrice: { pricePerKwh: number; pricePerH: number } | null = null;
 
     for (const h of histories) {
       const priceInfo = h.station?.priceInformation;
@@ -159,39 +164,50 @@ async function getStationPrice(
 
       const driver = (h.driverIdentifier || '').toLowerCase();
 
-      // Preskočiť špeciálnych používateľov (emaily s individuálnymi cenami)
-      if (specialUserEmails.size > 0 && specialUserEmails.has(driver)) continue;
-
-      // Skontrolovať dátum záznamu — staré záznamy môžu mať neaktuálne ceny
+      // Skontrolovať dátum záznamu
       const recordDate = h.startTime ? new Date(h.startTime) : null;
-      if (recordDate && recordDate < cutoffDate) {
-        // Starý záznam (> 6 mesiacov) — preskočiť, cena mohla byť medzitým zmenená
+      if (recordDate && recordDate < cutoffDate) continue;
+
+      // Špeciálny používateľ — uložiť jeho individuálnu cenu (len prvý/najnovší záznam)
+      if (specialUserEmails.size > 0 && specialUserEmails.has(driver)) {
+        if (!userPrices.has(driver)) {
+          userPrices.set(driver, {
+            pricePerKwh: priceInfo.pricePerKwh || 0,
+            pricePerH: priceInfo.pricePerH || 0,
+          });
+        }
         continue;
       }
 
-      // Nedávny záznam od ne-špeciálneho používateľa — verejná cena
-      return {
-        id: stationId,
-        pricePerKwh: priceInfo.pricePerKwh || 0,
-        pricePerH: priceInfo.pricePerH || 0,
-      };
+      // Verejná cena — len prvý (najnovší) záznam
+      if (!publicPrice) {
+        publicPrice = {
+          pricePerKwh: priceInfo.pricePerKwh || 0,
+          pricePerH: priceInfo.pricePerH || 0,
+        };
+      }
     }
 
-    // 2. Žiadny nedávny verejný záznam. Ak existujú záznamy s cenou (staré alebo špeciálne),
-    // nevieme aktuálnu verejnú cenu → vrátiť null pre sieťový medián.
+    if (publicPrice) {
+      return { id: stationId, ...publicPrice, userPrices };
+    }
+
+    // Žiadny nedávny verejný záznam. Ak existujú záznamy s cenou → null pre medián
     const hasAnyPricedRecord = histories.some((h: Record<string, unknown>) => {
       const priceInfo = (h.station as Record<string, unknown>)?.priceInformation as Record<string, number> | undefined;
       return priceInfo && priceInfo.pricePerKwh > 0;
     });
     if (hasAnyPricedRecord) {
       console.log(`[Prices] Station ${stationId}: no recent public price found, returning null for median fallback`);
+      // Stále vrátiť userPrices ak existujú
+      if (userPrices.size > 0) {
+        stationUserPricesCache.set(stationId, userPrices);
+      }
       return null;
     }
 
-    // 3. Žiadne záznamy s cenou vôbec — skontrolovať bez špeciálnych používateľov
-    // (stanica bez specialUsers a bez ceny = zadarmo)
     if (histories.length > 0) {
-      return { id: stationId, pricePerKwh: 0, pricePerH: 0 };
+      return { id: stationId, pricePerKwh: 0, pricePerH: 0, userPrices };
     }
 
     return null;
@@ -266,6 +282,7 @@ async function fetchPricesInBatches(
 
   try {
     const newCache = new Map<string, { pricePerKwh: number; pricePerH: number }>();
+    const newUserPricesCache = new Map<string, Map<string, { pricePerKwh: number; pricePerH: number }>>();
 
     for (let i = 0; i < stations.length; i += BATCH_SIZE) {
       const batch = stations.slice(i, i + BATCH_SIZE);
@@ -282,6 +299,10 @@ async function fetchPricesInBatches(
             pricePerKwh: result.value.pricePerKwh,
             pricePerH: result.value.pricePerH,
           });
+          // Uložiť individuálne ceny špeciálnych používateľov
+          if (result.value.userPrices.size > 0) {
+            newUserPricesCache.set(result.value.id, result.value.userPrices);
+          }
         }
       });
 
@@ -352,8 +373,10 @@ async function fetchPricesInBatches(
 
     const withPrice = Array.from(newCache.values()).filter(p => p.pricePerKwh > 0).length;
     stationPricesCache = newCache;
+    stationUserPricesCache = newUserPricesCache;
     pricesCacheExpiry = Date.now() + PRICES_CACHE_TTL;
-    console.log(`[Prices] Cached ${newCache.size}/${stations.length} prices (${withPrice} paid, ${stations.length - withPrice} free) in ${Date.now() - startTime}ms`);
+    const userPriceCount = newUserPricesCache.size;
+    console.log(`[Prices] Cached ${newCache.size}/${stations.length} prices (${withPrice} paid, ${stations.length - withPrice} free, ${userPriceCount} with user prices) in ${Date.now() - startTime}ms`);
   } catch (error) {
     console.error('[Prices] Fetch failed:', error);
   } finally {
@@ -365,6 +388,7 @@ async function fetchPricesInBatches(
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const filter = searchParams.get('filter') || '0';
+  const userEmail = searchParams.get('userEmail')?.toLowerCase() || null;
 
   const accessToken = await getAccessToken();
 
@@ -453,14 +477,27 @@ export async function GET(request: Request) {
 
     // 4. Pridať stavy a ceny z cache
     const stationsWithData = stations.map((station: Record<string, unknown>) => {
-      const price = stationPricesCache.get(station.id as string);
+      const stationId = station.id as string;
+      const price = stationPricesCache.get(stationId);
+
+      // Individuálna cena pre prihláseného používateľa (ak je špeciálny na tejto stanici)
+      let userPrice: { pricePerKwh: number; pricePerH: number } | undefined;
+      if (userEmail) {
+        const stationUserPrices = stationUserPricesCache.get(stationId);
+        if (stationUserPrices?.has(userEmail)) {
+          userPrice = stationUserPrices.get(userEmail);
+        }
+      }
+
       return {
         ...station,
         connectors: (station.connectors as Array<Record<string, unknown>> | undefined)?.map(connector => ({
           ...connector,
-          state: stationStatesCache.get(station.id as string) || (connector as Record<string, unknown>).state,
+          state: stationStatesCache.get(stationId) || (connector as Record<string, unknown>).state,
           pricePerKwh: price?.pricePerKwh,
           pricePerH: price?.pricePerH,
+          userPricePerKwh: userPrice?.pricePerKwh,
+          userPricePerH: userPrice?.pricePerH,
         })),
       };
     });
