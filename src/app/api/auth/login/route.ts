@@ -7,7 +7,6 @@ import {
   generateRefreshToken,
   formatUserForResponse,
   linkEcarupAccount,
-  hashPassword,
 } from '@/lib/services/userService';
 
 // Demo účty pre testovanie (vždy dostupné)
@@ -106,13 +105,13 @@ export async function POST(request: NextRequest) {
       console.warn('[Login] MongoDB not available, trying eCarUp fallback:', dbError instanceof Error ? dbError.message : dbError);
     }
 
-    // 3. Fallback: eCarUp/smart-me API
-    console.log(`[Login] Attempting eCarUp OAuth for: ${normalizedEmail}`);
+    // 3. Fallback: eCarUp/smart-me Basic Auth
+    console.log(`[Login] Attempting eCarUp BasicAuth for: ${normalizedEmail}`);
     try {
-      const ecarupResult = await tryEcarupLogin(normalizedEmail, password);
+      const ecarupUser = await tryEcarupLogin(normalizedEmail, password);
 
-      if (ecarupResult) {
-        console.log(`[Login] Success from eCarUp: ${normalizedEmail}`);
+      if (ecarupUser) {
+        console.log(`[Login] Success from eCarUp: ${normalizedEmail} (smart-me ID: ${ecarupUser.smartmeId})`);
 
         // Vytvoríme lokálny účet pre budúce prihlásenia
         try {
@@ -123,36 +122,36 @@ export async function POST(request: NextRequest) {
 
           // Prepojíme s eCarUp
           await linkEcarupAccount(normalizedEmail, {
-            customerId: ecarupResult.customerId,
-            accessToken: ecarupResult.accessToken,
-            refreshToken: ecarupResult.refreshToken,
+            customerId: ecarupUser.smartmeId,
           });
 
+          const userId = newUser._id || newUser.email;
           return NextResponse.json({
             user: formatUserForResponse(newUser),
             tokens: {
-              accessToken: ecarupResult.accessToken,
-              refreshToken: ecarupResult.refreshToken,
-              expiresIn: ecarupResult.expiresIn,
+              accessToken: generateToken(userId),
+              refreshToken: generateRefreshToken(userId),
+              expiresIn: 3600,
               tokenType: 'Bearer',
             },
           });
         } catch {
           // Ak sa nepodarí uložiť do DB, stále vrátime úspech
+          const userId = ecarupUser.smartmeId;
           return NextResponse.json({
             user: {
-              id: ecarupResult.customerId,
-              email: normalizedEmail,
-              firstName: '',
+              id: userId,
+              email: ecarupUser.email || normalizedEmail,
+              firstName: ecarupUser.username || '',
               lastName: '',
               phone: '',
               createdAt: new Date().toISOString(),
               preferredLanguage: 'sk',
             },
             tokens: {
-              accessToken: ecarupResult.accessToken,
-              refreshToken: ecarupResult.refreshToken,
-              expiresIn: ecarupResult.expiresIn,
+              accessToken: generateToken(userId),
+              refreshToken: generateRefreshToken(userId),
+              expiresIn: 3600,
               tokenType: 'Bearer',
             },
           });
@@ -176,46 +175,38 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Pokus o prihlásenie cez eCarUp/smart-me API
-async function tryEcarupLogin(email: string, password: string) {
-  const oauthUrl = process.env.NEXT_PUBLIC_OAUTH_URL || 'https://smart-me.com/oauth/token';
-  const clientId = process.env.NEXT_PUBLIC_ECARUP_CLIENT_ID || '';
-  const clientSecret = process.env.SMARTME_CLIENT_SECRET || process.env.ECARUP_CLIENT_SECRET || '';
+// Pokus o prihlásenie cez eCarUp/smart-me Basic Auth API
+// Smart-me API podporuje Basic Auth na GET /api/User endpoint
+async function tryEcarupLogin(email: string, password: string): Promise<{
+  smartmeId: string;
+  username: string;
+  email: string;
+} | null> {
+  const basicAuth = Buffer.from(`${email}:${password}`).toString('base64');
 
-  if (!clientId || !clientSecret) {
-    console.warn(`[eCarUp OAuth] Missing credentials - clientId: ${clientId ? 'SET' : 'MISSING'}, clientSecret: ${clientSecret ? 'SET' : 'MISSING'}`);
-    return null;
-  }
-
-  const params = new URLSearchParams();
-  params.append('grant_type', 'password');
-  params.append('username', email);
-  params.append('password', password);
-  params.append('client_id', clientId);
-  params.append('client_secret', clientSecret);
-  params.append('scope', 'ecarup offline_access');
-
-  const response = await fetch(oauthUrl, {
-    method: 'POST',
+  const response = await fetch('https://smart-me.com/api/User', {
+    method: 'GET',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${basicAuth}`,
+      'Accept': 'application/json',
     },
-    body: params,
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => 'unknown');
-    console.error(`[eCarUp OAuth] Failed with status ${response.status}: ${errorText}`);
+    if (response.status === 401) {
+      console.log(`[eCarUp BasicAuth] Invalid credentials for: ${email}`);
+    } else {
+      console.error(`[eCarUp BasicAuth] Failed with status ${response.status}`);
+    }
     return null;
   }
 
-  const tokenData = await response.json();
-  console.log(`[eCarUp OAuth] Success for: ${email}`);
+  const userData = await response.json();
+  console.log(`[eCarUp BasicAuth] Success for: ${email} (ID: ${userData.idAsString || userData.id})`);
 
   return {
-    accessToken: tokenData.access_token,
-    refreshToken: tokenData.refresh_token,
-    expiresIn: tokenData.expires_in,
-    customerId: tokenData.user_id || email,
+    smartmeId: String(userData.idAsString || userData.id),
+    username: userData.username || '',
+    email: userData.email || email,
   };
 }

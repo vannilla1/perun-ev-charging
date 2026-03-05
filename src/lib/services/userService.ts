@@ -140,16 +140,17 @@ export async function linkEcarupAccount(
   email: string,
   ecarupData: {
     customerId: string;
-    accessToken: string;
-    refreshToken: string;
+    accessToken?: string;
+    refreshToken?: string;
   }
 ): Promise<boolean> {
-  return updateUser(email, {
+  const updateData: Record<string, unknown> = {
     ecarupLinked: true,
     ecarupCustomerId: ecarupData.customerId,
-    ecarupAccessToken: ecarupData.accessToken,
-    ecarupRefreshToken: ecarupData.refreshToken,
-  });
+  };
+  if (ecarupData.accessToken) updateData.ecarupAccessToken = ecarupData.accessToken;
+  if (ecarupData.refreshToken) updateData.ecarupRefreshToken = ecarupData.refreshToken;
+  return updateUser(email, updateData);
 }
 
 // Získať počet používateľov
