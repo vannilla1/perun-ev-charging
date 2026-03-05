@@ -95,16 +95,19 @@ export async function POST(request: NextRequest) {
       // Používateľ existuje ale heslo je zlé
       const existingUser = await findUserByEmail(normalizedEmail);
       if (existingUser) {
+        console.log(`[Login] User found in MongoDB but password mismatch: ${normalizedEmail}`);
         return NextResponse.json(
           { error: 'Nesprávne heslo' },
           { status: 401 }
         );
       }
+      console.log(`[Login] User not found in MongoDB: ${normalizedEmail}`);
     } catch (dbError) {
-      console.warn('[Login] MongoDB not available, trying eCarUp fallback');
+      console.warn('[Login] MongoDB not available, trying eCarUp fallback:', dbError instanceof Error ? dbError.message : dbError);
     }
 
     // 3. Fallback: eCarUp/smart-me API
+    console.log(`[Login] Attempting eCarUp OAuth for: ${normalizedEmail}`);
     try {
       const ecarupResult = await tryEcarupLogin(normalizedEmail, password);
 
@@ -180,6 +183,7 @@ async function tryEcarupLogin(email: string, password: string) {
   const clientSecret = process.env.SMARTME_CLIENT_SECRET || process.env.ECARUP_CLIENT_SECRET || '';
 
   if (!clientId || !clientSecret) {
+    console.warn(`[eCarUp OAuth] Missing credentials - clientId: ${clientId ? 'SET' : 'MISSING'}, clientSecret: ${clientSecret ? 'SET' : 'MISSING'}`);
     return null;
   }
 
@@ -200,10 +204,13 @@ async function tryEcarupLogin(email: string, password: string) {
   });
 
   if (!response.ok) {
+    const errorText = await response.text().catch(() => 'unknown');
+    console.error(`[eCarUp OAuth] Failed with status ${response.status}: ${errorText}`);
     return null;
   }
 
   const tokenData = await response.json();
+  console.log(`[eCarUp OAuth] Success for: ${email}`);
 
   return {
     accessToken: tokenData.access_token,
