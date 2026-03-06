@@ -348,12 +348,10 @@ export default function MapPage() {
                       <>
                         <p className="text-[10px] sm:text-xs text-[var(--text-muted)] mb-0.5">Vaša cena za kWh</p>
                         <p className="text-xl sm:text-2xl font-bold text-[var(--perun-green)]">
-                          {selectedStation.userPricePerKwh > 0
-                            ? <>{selectedStation.userPricePerKwh.toFixed(2)} <span className="text-sm sm:text-base font-normal">€</span></>
-                            : 'Zadarmo'}
+                          {selectedStation.userPricePerKwh.toFixed(2)} <span className="text-sm sm:text-base font-normal">€</span>
                         </p>
                         <p className="text-[10px] sm:text-xs text-[var(--text-muted)] mt-1">
-                          Verejná cena: <span className="line-through">{selectedStation.pricePerKwh > 0 ? `${selectedStation.pricePerKwh.toFixed(2)} €` : 'Zadarmo'}</span>
+                          Verejná cena: {selectedStation.pricePerKwh > 0 ? `${selectedStation.pricePerKwh.toFixed(2)} €` : '0,00 €'}
                         </p>
                       </>
                     ) : (
