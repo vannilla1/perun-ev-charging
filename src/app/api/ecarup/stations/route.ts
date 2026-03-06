@@ -486,9 +486,17 @@ export async function GET(request: Request) {
       // Individuálna cena pre prihláseného používateľa (ak je špeciálny na tejto stanici)
       let userPrice: { pricePerKwh: number; pricePerH: number } | undefined;
       if (userEmail) {
+        // 1. Skúsiť cenu z histórie nabíjaní
         const stationUserPrices = stationUserPricesCache.get(stationId);
         if (stationUserPrices?.has(userEmail)) {
           userPrice = stationUserPrices.get(userEmail);
+        }
+        // 2. Ak nemá cenu z histórie ale je špeciálny používateľ → default 0€ (zadarmo)
+        if (!userPrice) {
+          const specialUsers = stationSpecialUsersCache.get(stationId);
+          if (specialUsers?.has(userEmail)) {
+            userPrice = { pricePerKwh: 0, pricePerH: 0 };
+          }
         }
       }
 
