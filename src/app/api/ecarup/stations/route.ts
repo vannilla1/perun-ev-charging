@@ -160,7 +160,7 @@ async function getStationPrice(
 
     for (const h of histories) {
       const priceInfo = h.station?.priceInformation;
-      if (!priceInfo || (priceInfo.pricePerKwh <= 0 && priceInfo.pricePerH <= 0)) continue;
+      if (!priceInfo) continue;
 
       const driver = (h.driverIdentifier || '').toLowerCase();
 
@@ -168,7 +168,7 @@ async function getStationPrice(
       const recordDate = h.startTime ? new Date(h.startTime) : null;
       if (recordDate && recordDate < cutoffDate) continue;
 
-      // Špeciálny používateľ — uložiť jeho individuálnu cenu (len prvý/najnovší záznam)
+      // Špeciálny používateľ — uložiť jeho individuálnu cenu (aj 0€ = zadarmo)
       if (specialUserEmails.size > 0 && specialUserEmails.has(driver)) {
         if (!userPrices.has(driver)) {
           userPrices.set(driver, {
@@ -178,6 +178,9 @@ async function getStationPrice(
         }
         continue;
       }
+
+      // Pre verejnú cenu — preskočiť záznamy s nulovou cenou
+      if (priceInfo.pricePerKwh <= 0 && priceInfo.pricePerH <= 0) continue;
 
       // Verejná cena — len prvý (najnovší) záznam
       if (!publicPrice) {
