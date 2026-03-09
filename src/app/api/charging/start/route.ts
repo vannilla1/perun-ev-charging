@@ -1,22 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/mongodb';
+import { getSmartmeAuth } from '@/lib/services/authHelper';
+import {
+  findPicoByStationId,
+  getPicoChargingData,
+  switchDevice,
+  getDeviceActions,
+  executeAction,
+  CHARGING_STATE_NAMES,
+} from '@/lib/services/smartmeService';
 
 const ECARUP_API_BASE = 'https://public-api.ecarup.com';
 const OAUTH_TOKEN_URL = 'https://api.smart-me.com/oauth/token';
 
-// Funkcia na vyhľadanie mapovania v MongoDB
-async function findStationBySerial(serial: string): Promise<string | null> {
-  try {
-    const db = await getDb();
-    const mapping = await db.collection('qr_mappings').findOne({ serial });
-    return mapping?.stationId || null;
-  } catch (error) {
-    console.error('MongoDB lookup error:', error);
-    return null;
-  }
-}
-
-// Cache pre token
+// Cache pre eCarUp OAuth token
 let cachedToken: string | null = null;
 let tokenExpiry: number | null = null;
 
@@ -28,10 +24,7 @@ async function getAccessToken(): Promise<string | null> {
   const clientId = process.env.NEXT_PUBLIC_SMARTME_CLIENT_ID;
   const clientSecret = process.env.SMARTME_CLIENT_SECRET;
 
-  if (!clientId || !clientSecret) {
-    console.error('OAuth credentials not configured');
-    return null;
-  }
+  if (!clientId || !clientSecret) return null;
 
   try {
     const params = new URLSearchParams();
@@ -41,96 +34,32 @@ async function getAccessToken(): Promise<string | null> {
 
     const response = await fetch(OAUTH_TOKEN_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params,
     });
 
-    if (!response.ok) {
-      console.error('Failed to get OAuth token:', response.status);
-      return null;
-    }
+    if (!response.ok) return null;
 
     const data = await response.json();
     cachedToken = data.access_token;
     tokenExpiry = Date.now() + (data.expires_in * 1000 * 0.9);
-
     return cachedToken;
-  } catch (error) {
-    console.error('OAuth request failed:', error);
-    return null;
-  }
-}
-
-// Funkcia na vyhľadanie stanice podľa serial ID alebo EVSE ID
-async function findStationByIdentifier(identifier: string, accessToken: string): Promise<string | null> {
-  try {
-    // Získame všetky stanice a hľadáme podľa rôznych identifikátorov
-    const response = await fetch(
-      `${ECARUP_API_BASE}/v1/stations`,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/json',
-        },
-        cache: 'no-store',
-      }
-    );
-
-    if (!response.ok) {
-      console.error('Failed to fetch stations:', response.status);
-      return null;
-    }
-
-    const data = await response.json();
-    const stations = data.stations || data || [];
-
-    // Hľadáme stanicu podľa rôznych identifikátorov
-    for (const station of stations) {
-      // Priame zhody na stanici
-      if (station.id === identifier ||
-          station.serial === identifier ||
-          station.evseId === identifier ||
-          station.evseid === identifier) {
-        return station.id;
-      }
-
-      // Skontrolovať konektory
-      if (station.connectors) {
-        for (const connector of station.connectors) {
-          if (connector.id === identifier ||
-              connector.serial === identifier ||
-              connector.evseId === identifier ||
-              connector.evseid === identifier) {
-            return station.id;
-          }
-        }
-      }
-    }
-
-    return null;
-  } catch (error) {
-    console.error('Error finding station by identifier:', error);
+  } catch {
     return null;
   }
 }
 
 // POST /api/charging/start
-// Spustenie nabíjania na stanici
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { stationId, connectorId, originalUrl } = body;
 
     if (!stationId) {
-      return NextResponse.json(
-        { error: 'ID stanice je povinné' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'ID stanice je povinné' }, { status: 400 });
     }
 
-    // Ak máme originalUrl a stationId je špeciálny marker, presmerujeme na eCarUp
+    // eCarUp redirect fallback
     if (stationId === 'ecarup-redirect' && originalUrl) {
       return NextResponse.json({
         success: true,
@@ -139,61 +68,15 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // 1. Získať eCarUp OAuth token pre informácie o stanici
     const accessToken = await getAccessToken();
-
     if (!accessToken) {
-      return NextResponse.json(
-        { error: 'Nepodarilo sa autentifikovať s API' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Nepodarilo sa autentifikovať s API' }, { status: 401 });
     }
 
-    // Skúsime nájsť stanicu podľa identifikátora (serial, EVSE ID, alebo priame ID)
-    let resolvedStationId = stationId;
-
-    // 1. Najprv skúsime MongoDB mapovanie (pre QR serial kódy)
-    console.log(`Checking MongoDB for serial mapping: ${stationId}`);
-    const mongoStationId = await findStationBySerial(stationId);
-    if (mongoStationId) {
-      resolvedStationId = mongoStationId;
-      console.log(`Found MongoDB mapping: ${stationId} -> ${resolvedStationId}`);
-    } else {
-      // 2. Skúsime priamy prístup k stanici
-      console.log(`Trying direct station lookup: ${stationId}`);
-      let stationFound = false;
-
-      try {
-        const directResponse = await fetch(
-          `${ECARUP_API_BASE}/v1/station/${stationId}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Accept': 'application/json',
-            },
-            cache: 'no-store',
-          }
-        );
-        stationFound = directResponse.ok;
-      } catch {
-        stationFound = false;
-      }
-
-      // 3. Ak priamy prístup nefunguje, skúsime vyhľadať podľa identifikátora v eCarUp API
-      if (!stationFound) {
-        console.log(`Direct lookup failed, searching by identifier: ${stationId}`);
-        const foundId = await findStationByIdentifier(stationId, accessToken);
-        if (foundId) {
-          resolvedStationId = foundId;
-          console.log(`Resolved identifier ${stationId} to station ID ${resolvedStationId}`);
-        } else {
-          console.log(`Station not found by identifier: ${stationId}`);
-        }
-      }
-    }
-
-    // 1. Najprv získame detail stanice pre overenie
+    // 2. Získať detail stanice z eCarUp
     const stationResponse = await fetch(
-      `${ECARUP_API_BASE}/v1/station/${resolvedStationId}`,
+      `${ECARUP_API_BASE}/v1/station/${stationId}`,
       {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -204,114 +87,187 @@ export async function POST(request: NextRequest) {
     );
 
     if (!stationResponse.ok) {
-      // Ak máme originalUrl, presmerujeme na eCarUp namiesto chyby
       if (originalUrl) {
-        console.log(`Station not found, redirecting to original URL: ${originalUrl}`);
         return NextResponse.json({
           success: true,
           redirectUrl: originalUrl,
-          message: 'Stanica nebola nájdená v našom systéme. Presmerovanie na eCarUp.',
+          message: 'Stanica nebola nájdená, presmerovanie na eCarUp.',
         });
       }
-      return NextResponse.json(
-        { error: 'Stanica nebola nájdená' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Stanica nebola nájdená' }, { status: 404 });
     }
 
     const stationData = await stationResponse.json();
-
-    // 2. Nájdeme správny konektor
     const connector = connectorId && connectorId !== 'default'
       ? stationData.connectors?.find((c: { id: string }) => c.id === connectorId)
       : stationData.connectors?.[0];
 
     if (!connector) {
-      return NextResponse.json(
-        { error: 'Konektor nebol nájdený' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Konektor nebol nájdený' }, { status: 404 });
     }
 
-    // 3. Skontrolujeme či je konektor dostupný
-    const connectorState = connector.state || 'UNKNOWN';
+    // 3. Pokúsiť sa o reálne spustenie cez smart-me API
+    const authHeader = request.headers.get('authorization');
+    const smartmeAuth = await getSmartmeAuth(authHeader);
 
-    if (connectorState === 'UNAVAILABLE' || connectorState === 'FAULTED') {
-      return NextResponse.json(
-        { error: 'Konektor nie je dostupný', connectorState },
-        { status: 409 }
-      );
-    }
+    if (smartmeAuth) {
+      console.log(`[Charging Start] User ${smartmeAuth.email} - trying smart-me API`);
 
-    // 4. Skontrolujeme či už neprebieha nabíjanie
-    try {
-      const activeResponse = await fetch(
-        `${ECARUP_API_BASE}/v1/station/${resolvedStationId}/connectors/${connector.id}/active-charging`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Accept': 'application/json',
-          },
-          cache: 'no-store',
-        }
-      );
+      try {
+        // Nájsť Pico zariadenie pre túto stanicu
+        const picoDevice = await findPicoByStationId(
+          stationId,
+          stationData.name,
+          smartmeAuth.basicAuth
+        );
 
-      if (activeResponse.ok) {
-        const activeCharging = await activeResponse.json();
+        if (picoDevice) {
+          // Skontrolovať stav nabíjačky
+          const chargingData = await getPicoChargingData(picoDevice.id, smartmeAuth.basicAuth);
+          const state = chargingData.state;
+          const stateName = CHARGING_STATE_NAMES[state] || 'unknown';
 
-        if (activeCharging && activeCharging.status === 'Charging') {
-          return NextResponse.json(
-            {
-              error: 'Na tomto konektore už prebieha nabíjanie',
-              activeCharging: {
-                startTime: activeCharging.startTime,
-                meterValue: activeCharging.meterValue,
+          console.log(`[Charging Start] Pico ${picoDevice.name} state: ${stateName} (${state})`);
+
+          // Stav 4 = už sa nabíja
+          if (state === 4) {
+            return NextResponse.json({
+              success: true,
+              sessionId: `pico-${Date.now()}-${picoDevice.id}`,
+              stationId,
+              picoDeviceId: picoDevice.id,
+              connectorId: connector.id,
+              status: 'charging',
+              message: 'Nabíjanie už prebieha na tejto stanici.',
+              station: {
+                name: stationData.name,
+                address: [stationData.street, stationData.city].filter(Boolean).join(', '),
+                maxPower: connector.maxpower ? connector.maxpower / 1000 : null,
+                plugType: connector.plugtype,
+              },
+              chargingData: {
+                power: chargingData.activeChargingPower,
+                energy: chargingData.activeChargingEnergy,
+                duration: chargingData.duration,
+              },
+              startTime: new Date().toISOString(),
+            });
+          }
+
+          // Stav 7 = offline
+          if (state === 7) {
+            return NextResponse.json({
+              error: 'Nabíjačka je offline',
+              picoState: stateName,
+            }, { status: 503 });
+          }
+
+          // Stav 1 = čaká na auto (kábel nie je pripojený)
+          if (state === 1) {
+            return NextResponse.json({
+              error: 'Pripojte najprv nabíjací kábel k vozidlu',
+              picoState: stateName,
+              picoDeviceId: picoDevice.id,
+            }, { status: 409 });
+          }
+
+          // Stav 2 = auto je pripojené, pripravené na nabíjanie
+          // Stav 6 = čaká na autorizáciu
+          if (state === 2 || state === 6) {
+            console.log(`[Charging Start] Starting charging on ${picoDevice.name}...`);
+
+            // Skúsime najprv cez actions API
+            try {
+              const actions = await getDeviceActions(picoDevice.id, smartmeAuth.basicAuth);
+              console.log(`[Charging Start] Available actions:`, actions.map(a => `${a.name} (${a.obisCode})`));
+
+              const onOffAction = actions.find(a => a.actionType === 0);
+              if (onOffAction) {
+                await executeAction(picoDevice.id, [{ obisCode: onOffAction.obisCode, value: 1 }], smartmeAuth.basicAuth);
+                console.log(`[Charging Start] Action executed: ${onOffAction.name} = ON`);
+              } else {
+                // Fallback na switch API
+                await switchDevice(picoDevice.id, true, smartmeAuth.basicAuth);
+                console.log(`[Charging Start] Switch ON executed`);
               }
-            },
-            { status: 409 }
-          );
+            } catch (actionError) {
+              console.log(`[Charging Start] Actions API failed, trying switch:`, actionError);
+              await switchDevice(picoDevice.id, true, smartmeAuth.basicAuth);
+              console.log(`[Charging Start] Switch ON executed (fallback)`);
+            }
+
+            return NextResponse.json({
+              success: true,
+              sessionId: `pico-${Date.now()}-${picoDevice.id}`,
+              stationId,
+              picoDeviceId: picoDevice.id,
+              connectorId: connector.id,
+              status: 'starting',
+              message: 'Nabíjanie sa spúšťa...',
+              station: {
+                name: stationData.name,
+                address: [stationData.street, stationData.city].filter(Boolean).join(', '),
+                maxPower: connector.maxpower ? connector.maxpower / 1000 : null,
+                plugType: connector.plugtype,
+              },
+              startTime: new Date().toISOString(),
+            });
+          }
+
+          // Stav 3 = čaká na auto po spustení
+          if (state === 3) {
+            return NextResponse.json({
+              success: true,
+              sessionId: `pico-${Date.now()}-${picoDevice.id}`,
+              stationId,
+              picoDeviceId: picoDevice.id,
+              connectorId: connector.id,
+              status: 'starting',
+              message: 'Nabíjačka čaká na pripojenie vozidla.',
+              station: {
+                name: stationData.name,
+                address: [stationData.street, stationData.city].filter(Boolean).join(', '),
+                maxPower: connector.maxpower ? connector.maxpower / 1000 : null,
+                plugType: connector.plugtype,
+              },
+              startTime: new Date().toISOString(),
+            });
+          }
+
+          // Iný stav - logovať
+          console.log(`[Charging Start] Unexpected state: ${stateName}`);
+        } else {
+          console.log(`[Charging Start] No matching Pico device found for station ${stationId}`);
         }
+      } catch (smartmeError) {
+        console.error('[Charging Start] Smart-me API error:', smartmeError);
       }
-    } catch (activeError) {
-      console.log('Active charging check skipped:', activeError);
     }
 
-    // 5. eCarUp Public API nepodporuje remote start
-    // Vrátime informácie pre klienta aby mohol pokračovať
-    // V realite by používateľ musel:
-    // - Použiť RFID kartu
-    // - Alebo eCarUp mobilnú aplikáciu
-    // - Alebo platobný portál cez QR kód
-
-    const sessionId = `session-${Date.now()}-${resolvedStationId}-${connector.id}`;
-
-    // Vrátime eCarUp payment URL ak existuje
-    const paymentUrl = stationData.paymentUrl || `https://ecarup.com/charge/${resolvedStationId}`;
+    // 4. Fallback - bez smart-me (informačná odpoveď)
+    const sessionId = `session-${Date.now()}-${stationId}-${connector.id}`;
+    const paymentUrl = stationData.paymentUrl || `https://ecarup.com/charge/${stationId}`;
 
     return NextResponse.json({
       success: true,
       sessionId,
-      stationId: resolvedStationId,
-      originalStationId: stationId !== resolvedStationId ? stationId : undefined,
+      stationId,
       connectorId: connector.id,
-      connectorNumber: connector.number,
       status: 'pending_authorization',
-      message: 'Pripojte kábel a autorizujte nabíjanie na stanici.',
+      message: smartmeAuth
+        ? 'Nepodarilo sa nájsť nabíjačku v smart-me. Pripojte kábel a autorizujte na stanici.'
+        : 'Prihláste sa pre vzdialené spustenie nabíjania, alebo autorizujte priamo na stanici.',
       station: {
         name: stationData.name,
         address: [stationData.street, stationData.city].filter(Boolean).join(', '),
         maxPower: connector.maxpower ? connector.maxpower / 1000 : null,
         plugType: connector.plugtype,
       },
-      // Pre prípad že chceme presmerovať na eCarUp platbu
       paymentUrl,
       startTime: new Date().toISOString(),
     });
   } catch (error) {
     console.error('Start charging error:', error);
-    return NextResponse.json(
-      { error: 'Nepodarilo sa spustiť nabíjanie' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Nepodarilo sa spustiť nabíjanie' }, { status: 500 });
   }
 }

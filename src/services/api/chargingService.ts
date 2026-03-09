@@ -1,4 +1,10 @@
 import type { ChargingSession } from '@/types';
+import { getAccessToken } from './client';
+
+function authHeaders(): Record<string, string> {
+  const token = getAccessToken();
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
 
 // eCarUp Active Charging Response (podľa API dokumentácie)
 interface ActiveChargingResponse {
@@ -114,6 +120,7 @@ export async function startCharging(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...authHeaders(),
       },
       body: JSON.stringify({ stationId, connectorId, originalUrl }),
     });
@@ -138,6 +145,7 @@ export async function stopCharging(sessionId: string): Promise<StopChargingRespo
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...authHeaders(),
       },
       body: JSON.stringify({ sessionId }),
     });
@@ -158,7 +166,9 @@ export async function stopCharging(sessionId: string): Promise<StopChargingRespo
 // Získanie stavu nabíjacej relácie
 export async function getSessionStatus(sessionId: string): Promise<SessionStatusResponse> {
   try {
-    const response = await fetch(`/api/charging/status?sessionId=${sessionId}`);
+    const response = await fetch(`/api/charging/status?sessionId=${sessionId}`, {
+      headers: authHeaders(),
+    });
 
     const data = await response.json();
 

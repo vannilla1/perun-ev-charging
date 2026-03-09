@@ -7,6 +7,7 @@ import {
   generateRefreshToken,
   formatUserForResponse,
   linkEcarupAccount,
+  updateUser,
 } from '@/lib/services/userService';
 
 // Demo účty pre testovanie (vždy dostupné)
@@ -80,6 +81,12 @@ export async function POST(request: NextRequest) {
         console.log(`[Login] Success from MongoDB: ${normalizedEmail}`);
         const userId = user._id || user.email;
 
+        // Aktualizujeme smartmeBasicAuth ak je eCarUp prepojený
+        if (user.ecarupLinked && !user.smartmeBasicAuth) {
+          const basicAuthToken = Buffer.from(`${normalizedEmail}:${password}`).toString('base64');
+          updateUser(normalizedEmail, { smartmeBasicAuth: basicAuthToken }).catch(() => {});
+        }
+
         return NextResponse.json({
           user: formatUserForResponse(user),
           tokens: {
@@ -120,9 +127,11 @@ export async function POST(request: NextRequest) {
             password: password,
           });
 
-          // Prepojíme s eCarUp
+          // Prepojíme s eCarUp a uložíme Basic Auth pre smart-me API
+          const basicAuthToken = Buffer.from(`${normalizedEmail}:${password}`).toString('base64');
           await linkEcarupAccount(normalizedEmail, {
             customerId: ecarupUser.smartmeId,
+            smartmeBasicAuth: basicAuthToken,
           });
 
           const userId = newUser._id || newUser.email;

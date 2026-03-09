@@ -1,23 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSmartmeAuth } from '@/lib/services/authHelper';
+import { getPicoChargingData, CHARGING_STATE_NAMES } from '@/lib/services/smartmeService';
 
 const ECARUP_API_BASE = 'https://public-api.ecarup.com';
 const OAUTH_TOKEN_URL = 'https://api.smart-me.com/oauth/token';
 
-// Cache pre token
 let cachedToken: string | null = null;
 let tokenExpiry: number | null = null;
 
 async function getAccessToken(): Promise<string | null> {
-  if (cachedToken && tokenExpiry && Date.now() < tokenExpiry) {
-    return cachedToken;
-  }
+  if (cachedToken && tokenExpiry && Date.now() < tokenExpiry) return cachedToken;
 
   const clientId = process.env.NEXT_PUBLIC_SMARTME_CLIENT_ID;
   const clientSecret = process.env.SMARTME_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    return null;
-  }
+  if (!clientId || !clientSecret) return null;
 
   try {
     const params = new URLSearchParams();
@@ -27,20 +23,14 @@ async function getAccessToken(): Promise<string | null> {
 
     const response = await fetch(OAUTH_TOKEN_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params,
     });
-
-    if (!response.ok) {
-      return null;
-    }
+    if (!response.ok) return null;
 
     const data = await response.json();
     cachedToken = data.access_token;
     tokenExpiry = Date.now() + (data.expires_in * 1000 * 0.9);
-
     return cachedToken;
   } catch {
     return null;
@@ -48,35 +38,71 @@ async function getAccessToken(): Promise<string | null> {
 }
 
 // GET /api/charging/status?sessionId=xxx
-// Získanie stavu nabíjacej relácie
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
-    const stationId = searchParams.get('stationId');
-    const connectorId = searchParams.get('connectorId');
 
     if (!sessionId) {
-      return NextResponse.json(
-        { error: 'ID relácie je povinné' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'ID relácie je povinné' }, { status: 400 });
     }
 
-    // Parsovanie sessionId pre získanie stationId a connectorId
-    // Format: session-{timestamp}-{stationId}-{connectorId}
+    // 1. Ak je to Pico session, použijeme smart-me API
+    if (sessionId.startsWith('pico-')) {
+      const picoDeviceId = sessionId.split('-').slice(2).join('-'); // pico-{timestamp}-{uuid}
+      const authHeader = request.headers.get('authorization');
+      const smartmeAuth = await getSmartmeAuth(authHeader);
+
+      if (smartmeAuth && picoDeviceId) {
+        try {
+          const chargingData = await getPicoChargingData(picoDeviceId, smartmeAuth.basicAuth);
+          const stateName = CHARGING_STATE_NAMES[chargingData.state] || 'unknown';
+
+          // Stav 4 = nabíjanie prebieha
+          const isCharging = chargingData.state === 4;
+          // Stav 1,2 po nabíjaní = ukončené
+          const isCompleted = chargingData.state === 1 || chargingData.state === 2;
+
+          let status: string;
+          if (isCharging) {
+            status = 'charging';
+          } else if (chargingData.state === 3 || chargingData.state === 6) {
+            status = 'starting';
+          } else if (isCompleted && chargingData.activeChargingEnergy > 0) {
+            status = 'completed';
+          } else {
+            status = 'idle';
+          }
+
+          return NextResponse.json({
+            sessionId,
+            status,
+            currentPower: Math.round(chargingData.activeChargingPower * 100) / 100,
+            energyDelivered: Math.round(chargingData.activeChargingEnergy * 100) / 100,
+            duration: chargingData.duration,
+            estimatedCost: 0, // 0€ pre špeciálnych používateľov
+            pricePerKwh: 0,
+            picoState: stateName,
+            maxCurrent: chargingData.maxAllowedChargingCurrent,
+            source: 'smartme_pico',
+          });
+        } catch (picoError) {
+          console.error('[Status] Pico API error:', picoError);
+        }
+      }
+    }
+
+    // 2. Fallback na eCarUp API
     const sessionParts = sessionId.split('-');
-    const parsedStationId = stationId || sessionParts[2];
-    const parsedConnectorId = connectorId || sessionParts[3];
+    const stationId = searchParams.get('stationId') || sessionParts[2];
+    const connectorId = searchParams.get('connectorId') || sessionParts[3];
 
-    // Ak máme stationId a connectorId, skúsime získať reálne dáta z eCarUp
-    if (parsedStationId && parsedConnectorId) {
+    if (stationId && connectorId) {
       const accessToken = await getAccessToken();
-
       if (accessToken) {
         try {
           const activeResponse = await fetch(
-            `${ECARUP_API_BASE}/v1/station/${parsedStationId}/connectors/${parsedConnectorId}/active-charging`,
+            `${ECARUP_API_BASE}/v1/station/${stationId}/connectors/${connectorId}/active-charging`,
             {
               headers: {
                 'Authorization': `Bearer ${accessToken}`,
@@ -88,46 +114,37 @@ export async function GET(request: NextRequest) {
 
           if (activeResponse.ok) {
             const activeCharging = await activeResponse.json();
-
-            if (activeCharging && activeCharging.status) {
-              // Máme reálne dáta z API
+            if (activeCharging?.status) {
               const startTime = activeCharging.startTime ? new Date(activeCharging.startTime) : new Date();
               const elapsedSeconds = Math.floor((Date.now() - startTime.getTime()) / 1000);
-              const meterValueKwh = (activeCharging.meterValue || 0) / 1000; // Wh -> kWh
-              const pricePerKwh = activeCharging.price || 0.35;
+              const meterValueKwh = (activeCharging.meterValue || 0) / 1000;
+              const pricePerKwh = activeCharging.price || 0;
 
               return NextResponse.json({
                 sessionId,
                 status: activeCharging.status.toLowerCase(),
-                currentPower: 0, // API neposkytuje aktuálny výkon
+                currentPower: 0,
                 energyDelivered: Math.round(meterValueKwh * 100) / 100,
                 duration: elapsedSeconds,
                 estimatedCost: Math.round(meterValueKwh * pricePerKwh * 100) / 100,
                 pricePerKwh,
-                transactionId: activeCharging.transactionId,
-                driverId: activeCharging.driverId,
                 source: 'ecarup_api',
               });
             }
           }
         } catch (apiError) {
-          console.log('eCarUp API check failed, using simulation:', apiError);
+          console.log('eCarUp API check failed:', apiError);
         }
       }
     }
 
-    // Fallback na simulované hodnoty
+    // 3. Simulácia pre demo/testing
     const sessionStart = parseInt(sessionParts[1]) || Date.now();
     const elapsedSeconds = Math.floor((Date.now() - sessionStart) / 1000);
-
-    // Typický nabíjací profil
-    const maxPower = 22; // kW
+    const maxPower = 22;
     const chargeLevel = Math.min(elapsedSeconds / 7200, 1);
     const currentPower = maxPower * (1 - chargeLevel * 0.3);
-
     const energyDelivered = (elapsedSeconds / 3600) * (maxPower * 0.85);
-    const pricePerKwh = 0.35;
-    const estimatedCost = energyDelivered * pricePerKwh;
 
     return NextResponse.json({
       sessionId,
@@ -135,18 +152,12 @@ export async function GET(request: NextRequest) {
       currentPower: Math.round(currentPower * 10) / 10,
       energyDelivered: Math.round(energyDelivered * 100) / 100,
       duration: elapsedSeconds,
-      estimatedCost: Math.round(estimatedCost * 100) / 100,
-      pricePerKwh,
-      voltage: 230 + Math.random() * 10,
-      current: Math.round((currentPower * 1000) / 230),
-      stateOfCharge: Math.min(Math.round(20 + chargeLevel * 80), 100),
+      estimatedCost: 0,
+      pricePerKwh: 0,
       source: 'simulation',
     });
   } catch (error) {
     console.error('Get charging status error:', error);
-    return NextResponse.json(
-      { error: 'Nepodarilo sa získať stav nabíjania' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Nepodarilo sa získať stav nabíjania' }, { status: 500 });
   }
 }

@@ -64,6 +64,7 @@ export interface UserDocument {
   ecarupCustomerId?: string;
   ecarupAccessToken?: string;
   ecarupRefreshToken?: string;
+  smartmeBasicAuth?: string; // Base64 encoded email:password pre smart-me API
   // Platobné metódy
   paymentMethods?: PaymentMethodDocument[];
   defaultPaymentMethodId?: string;

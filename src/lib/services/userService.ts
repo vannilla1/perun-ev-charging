@@ -142,6 +142,7 @@ export async function linkEcarupAccount(
     customerId: string;
     accessToken?: string;
     refreshToken?: string;
+    smartmeBasicAuth?: string;
   }
 ): Promise<boolean> {
   const updateData: Record<string, unknown> = {
@@ -150,6 +151,7 @@ export async function linkEcarupAccount(
   };
   if (ecarupData.accessToken) updateData.ecarupAccessToken = ecarupData.accessToken;
   if (ecarupData.refreshToken) updateData.ecarupRefreshToken = ecarupData.refreshToken;
+  if (ecarupData.smartmeBasicAuth) updateData.smartmeBasicAuth = ecarupData.smartmeBasicAuth;
   return updateUser(email, updateData);
 }
 
