@@ -34,6 +34,10 @@ yarn-error.log*
 .env*
 !.env.example
 
+# capacitor / native
+/ios/
+/android/
+
 # vercel
 .vercel
 
