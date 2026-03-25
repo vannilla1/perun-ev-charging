@@ -1,0 +1,14 @@
+{
+  "appId": "sk.perun.evcharging",
+  "appName": "Perun Nabíjanie",
+  "webDir": "out",
+  "server": {
+    "url": "https://perun-ev-charging.onrender.com",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "always",
+    "preferredContentMode": "mobile",
+    "scheme": "Perun"
+  }
+}
