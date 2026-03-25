@@ -27,7 +27,7 @@ export default function EditProfilePage() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ firstName, lastName, phone }),
+        body: JSON.stringify({ firstName, lastName, phone, email: user?.email }),
       });
       if (!res.ok) {
         const data = await res.json();

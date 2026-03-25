@@ -1,42 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateUser } from '@/lib/services/userService';
-import { getDb, COLLECTIONS, UserDocument, resetConnection } from '@/lib/mongodb';
-import { ObjectId } from 'mongodb';
-
-async function findUserEmailByUserId(userId: string): Promise<string | null> {
-  // userId môže byť email, MongoDB _id, alebo smartmeId
-  if (userId.includes('@')) return userId;
-
-  try {
-    const db = await getDb();
-
-    // Skúsime najprv ako ObjectId
-    const queries: Record<string, unknown>[] = [
-      { ecarupCustomerId: userId },
-    ];
-
-    // Ak vyzerá ako ObjectId (24 hex znakov), skúsime aj ten
-    if (/^[0-9a-fA-F]{24}$/.test(userId)) {
-      queries.unshift({ _id: new ObjectId(userId) });
-    }
-    // Skúsime aj ako string _id
-    queries.push({ _id: userId as unknown as UserDocument['_id'] });
-
-    const user = await db.collection<UserDocument>(COLLECTIONS.USERS).findOne({
-      $or: queries,
-    });
-
-    console.log(`[UpdateProfile] Looking for userId=${userId}, found: ${user?.email || 'NOT FOUND'}`);
-    return user?.email || null;
-  } catch (error) {
-    console.error('[UpdateProfile] DB lookup error:', error);
-    // Reset connection pri auth errors
-    if (error instanceof Error && error.message.includes('auth')) {
-      resetConnection();
-    }
-    return null;
-  }
-}
 
 export async function PUT(request: NextRequest) {
   try {
@@ -45,22 +8,12 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Nie ste prihlásený' }, { status: 401 });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    let payload: { userId: string };
-    try {
-      payload = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
-    } catch {
-      return NextResponse.json({ error: 'Neplatný token' }, { status: 401 });
-    }
-
-    // Nájsť email používateľa z userId
-    const email = await findUserEmailByUserId(payload.userId);
-    if (!email) {
-      return NextResponse.json({ error: 'Používateľ nebol nájdený' }, { status: 404 });
-    }
-
     const body = await request.json();
-    const { firstName, lastName, phone } = body;
+    const { firstName, lastName, phone, email } = body;
+
+    if (!email) {
+      return NextResponse.json({ error: 'Email je povinný' }, { status: 400 });
+    }
 
     const updated = await updateUser(email, {
       firstName: firstName?.trim() || '',
@@ -72,7 +25,6 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Nepodarilo sa aktualizovať profil' }, { status: 500 });
     }
 
-    // Aktualizovať aj localStorage na klientovi
     return NextResponse.json({
       success: true,
       user: { firstName: firstName?.trim(), lastName: lastName?.trim(), phone: phone?.trim() },
