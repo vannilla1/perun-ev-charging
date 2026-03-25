@@ -17,6 +17,7 @@
   "dependencies": {
     "@stripe/react-stripe-js": "^5.6.0",
     "@stripe/stripe-js": "^8.7.0",
+    "@swc/helpers": "^0.5.19",
     "@tailwindcss/postcss": "^4",
     "@tanstack/react-query": "^5.90.20",
     "@types/leaflet": "^1.9.21",
@@ -35,6 +36,9 @@
     "ws": "^8.19.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.2.0",
+    "@capacitor/core": "^8.2.0",
+    "@capacitor/ios": "^8.2.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -46,9 +50,6 @@
     "eslint-config-next": "16.1.1",
     "jsdom": "^28.0.0",
     "typescript": "^5",
-    "vitest": "^4.0.18",
-    "@capacitor/cli": "^8.2.0",
-    "@capacitor/core": "^8.2.0",
-    "@capacitor/ios": "^8.2.0"
+    "vitest": "^4.0.18"
   }
 }
