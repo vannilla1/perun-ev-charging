@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { findUserByEmail, updateUser } from '@/lib/services/userService';
+import { updateUser } from '@/lib/services/userService';
 import { getDb, COLLECTIONS, UserDocument } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 
 async function findUserEmailByUserId(userId: string): Promise<string | null> {
   // userId môže byť email, MongoDB _id, alebo smartmeId
@@ -8,14 +9,27 @@ async function findUserEmailByUserId(userId: string): Promise<string | null> {
 
   try {
     const db = await getDb();
+
+    // Skúsime najprv ako ObjectId
+    const queries: Record<string, unknown>[] = [
+      { ecarupCustomerId: userId },
+    ];
+
+    // Ak vyzerá ako ObjectId (24 hex znakov), skúsime aj ten
+    if (/^[0-9a-fA-F]{24}$/.test(userId)) {
+      queries.unshift({ _id: new ObjectId(userId) });
+    }
+    // Skúsime aj ako string _id
+    queries.push({ _id: userId as unknown as UserDocument['_id'] });
+
     const user = await db.collection<UserDocument>(COLLECTIONS.USERS).findOne({
-      $or: [
-        { _id: userId as unknown as UserDocument['_id'] },
-        { ecarupCustomerId: userId },
-      ],
+      $or: queries,
     });
+
+    console.log(`[UpdateProfile] Looking for userId=${userId}, found: ${user?.email || 'NOT FOUND'}`);
     return user?.email || null;
-  } catch {
+  } catch (error) {
+    console.error('[UpdateProfile] DB lookup error:', error);
     return null;
   }
 }
