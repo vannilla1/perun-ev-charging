@@ -13,27 +13,33 @@ let cachedClient: MongoClient | null = null;
 let cachedDb: Db | null = null;
 
 export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db }> {
-  // Ak máme cached connection, použijeme ho
+  // Ak máme cached connection, overíme že funguje
   if (cachedClient && cachedDb) {
-    return { client: cachedClient, db: cachedDb };
+    try {
+      await cachedDb.command({ ping: 1 });
+      return { client: cachedClient, db: cachedDb };
+    } catch {
+      console.log('[MongoDB] Cached connection stale, reconnecting...');
+      cachedClient = null;
+      cachedDb = null;
+    }
   }
 
   if (!MONGODB_URI) {
     throw new Error('MONGODB_URI is not defined in environment variables');
   }
 
-  // Vytvorenie nového klienta
   const client = new MongoClient(MONGODB_URI, {
     maxPoolSize: 10,
-    minPoolSize: 5,
+    minPoolSize: 1,
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 10000,
   });
 
-  // Pripojenie
   await client.connect();
 
   const db = client.db(MONGODB_DB);
 
-  // Cache pre budúce použitie
   cachedClient = client;
   cachedDb = db;
 
@@ -46,6 +52,15 @@ export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db
 export async function getDb(): Promise<Db> {
   const { db } = await connectToDatabase();
   return db;
+}
+
+// Reset cached connection (pre prípad auth errors)
+export function resetConnection(): void {
+  if (cachedClient) {
+    cachedClient.close().catch(() => {});
+  }
+  cachedClient = null;
+  cachedDb = null;
 }
 
 // Export typov pre kolekcie

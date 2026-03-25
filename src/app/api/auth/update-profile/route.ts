@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateUser } from '@/lib/services/userService';
-import { getDb, COLLECTIONS, UserDocument } from '@/lib/mongodb';
+import { getDb, COLLECTIONS, UserDocument, resetConnection } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
 async function findUserEmailByUserId(userId: string): Promise<string | null> {
@@ -30,6 +30,10 @@ async function findUserEmailByUserId(userId: string): Promise<string | null> {
     return user?.email || null;
   } catch (error) {
     console.error('[UpdateProfile] DB lookup error:', error);
+    // Reset connection pri auth errors
+    if (error instanceof Error && error.message.includes('auth')) {
+      resetConnection();
+    }
     return null;
   }
 }
