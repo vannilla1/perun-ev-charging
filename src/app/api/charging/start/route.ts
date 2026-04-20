@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSmartmeAuth } from '@/lib/services/authHelper';
+import { getEcarupAccessToken, ECARUP_API_BASE } from '@/lib/services/ecarupAuth';
 import {
   findPicoByStationId,
   getPicoChargingData,
@@ -8,46 +9,6 @@ import {
   executeAction,
   CHARGING_STATE_NAMES,
 } from '@/lib/services/smartmeService';
-
-const ECARUP_API_BASE = 'https://public-api.ecarup.com';
-const OAUTH_TOKEN_URL = 'https://api.smart-me.com/oauth/token';
-
-// Cache pre eCarUp OAuth token
-let cachedToken: string | null = null;
-let tokenExpiry: number | null = null;
-
-async function getAccessToken(): Promise<string | null> {
-  if (cachedToken && tokenExpiry && Date.now() < tokenExpiry) {
-    return cachedToken;
-  }
-
-  const clientId = process.env.NEXT_PUBLIC_SMARTME_CLIENT_ID;
-  const clientSecret = process.env.SMARTME_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) return null;
-
-  try {
-    const params = new URLSearchParams();
-    params.append('grant_type', 'client_credentials');
-    params.append('client_id', clientId);
-    params.append('client_secret', clientSecret);
-
-    const response = await fetch(OAUTH_TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params,
-    });
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    cachedToken = data.access_token;
-    tokenExpiry = Date.now() + (data.expires_in * 1000 * 0.9);
-    return cachedToken;
-  } catch {
-    return null;
-  }
-}
 
 // POST /api/charging/start
 export async function POST(request: NextRequest) {
@@ -69,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Získať eCarUp OAuth token pre informácie o stanici
-    const accessToken = await getAccessToken();
+    const accessToken = await getEcarupAccessToken();
     if (!accessToken) {
       return NextResponse.json({ error: 'Nepodarilo sa autentifikovať s API' }, { status: 401 });
     }

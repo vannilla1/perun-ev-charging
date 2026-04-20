@@ -5,10 +5,10 @@ import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { AppLayout, PageHeader } from '@/components/Layout';
-import { Card, CardContent, Button, Input } from '@/components/Common';
+import { Card, CardContent, Button, Input, QRIcon, BoltIcon, PlugIcon } from '@/components/Common';
 import { useCharging } from '@/hooks';
 import { useAuth } from '@/contexts/AuthContext';
-import { StripeProvider, GuestPaymentForm } from '@/components/Payments';
+import { StripeProvider, GuestPaymentForm } from '@/components/Payment';
 
 // Dynamický import QR skenera (potrebuje prístup k window)
 const QRScanner = dynamic(
@@ -16,23 +16,6 @@ const QRScanner = dynamic(
   { ssr: false }
 );
 
-const QRIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-  </svg>
-);
-
-const BoltIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-  </svg>
-);
-
-const PlugIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-  </svg>
-);
 
 function ChargingPageContent() {
   const t = useTranslations('charging');
@@ -168,7 +151,7 @@ function ChargingPageContent() {
             >
               <div className="text-center">
                 <div className="text-[var(--primary)] mb-4 flex justify-center">
-                  <QRIcon />
+                  <QRIcon className="h-24 w-24" />
                 </div>
                 <p className="text-[var(--text-secondary)] text-sm px-4">
                   {t('scanInstructions')}
@@ -299,7 +282,7 @@ function ChargingPageContent() {
     <div className="flex flex-col items-center justify-center p-6 min-h-[400px]">
       <div className="animate-pulse mb-6">
         <div className="w-24 h-24 rounded-full bg-[var(--primary)] flex items-center justify-center text-white">
-          <BoltIcon />
+          <BoltIcon className="h-8 w-8" />
         </div>
       </div>
       <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
@@ -319,7 +302,7 @@ function ChargingPageContent() {
         <div className={`w-20 h-20 rounded-full flex items-center justify-center ${
           stationInfo?.status === 'AVAILABLE' ? 'bg-[var(--secondary)]' : 'bg-[var(--warning)]'
         }`}>
-          <PlugIcon />
+          <PlugIcon className="h-6 w-6" />
         </div>
       </div>
 
@@ -564,7 +547,7 @@ function ChargingPageContent() {
     <div className="flex flex-col items-center justify-center p-6 min-h-[400px]">
       <div className="animate-pulse mb-6">
         <div className="w-24 h-24 rounded-full bg-[var(--secondary)] flex items-center justify-center text-white">
-          <BoltIcon />
+          <BoltIcon className="h-8 w-8" />
         </div>
       </div>
       <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
@@ -585,7 +568,7 @@ function ChargingPageContent() {
         <div className="relative">
           <div className="w-32 h-32 rounded-full bg-[var(--secondary)] flex items-center justify-center animate-pulse">
             <div className="text-white">
-              <BoltIcon />
+              <BoltIcon className="h-8 w-8" />
             </div>
           </div>
           <div className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-lg">

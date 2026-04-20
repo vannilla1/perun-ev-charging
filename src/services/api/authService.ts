@@ -1,7 +1,6 @@
-import axios from 'axios';
 import { API_CONFIG } from './config';
 import { setAccessToken, removeAccessToken } from './client';
-import type { ECarUpTokenResponse, User } from '@/types';
+import type { User } from '@/types';
 
 interface AuthTokens {
   accessToken: string;
@@ -30,21 +29,23 @@ export async function getAccessToken(): Promise<AuthTokens> {
     params.append('client_secret', API_CONFIG.clientSecret);
     params.append('scope', API_CONFIG.scope);
 
-    const response = await axios.post<ECarUpTokenResponse>(
-      API_CONFIG.oauthUrl,
-      params,
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }
-    );
+    const response = await fetch(API_CONFIG.oauthUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params,
+    });
+
+    if (!response.ok) {
+      throw new Error(`OAuth token request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
 
     const tokens: AuthTokens = {
-      accessToken: response.data.access_token,
-      refreshToken: response.data.refresh_token,
-      expiresIn: response.data.expires_in,
-      tokenType: response.data.token_type,
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresIn: data.expires_in,
+      tokenType: data.token_type,
     };
 
     setAccessToken(tokens.accessToken);

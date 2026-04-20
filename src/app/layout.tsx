@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { AuthProvider } from '@/contexts';
+import { ServiceWorkerInit } from '@/components/Layout';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -45,6 +46,7 @@ export default async function RootLayout({
         <QueryProvider>
           <AuthProvider>
             <NextIntlClientProvider messages={messages}>
+              <ServiceWorkerInit />
               {children}
             </NextIntlClientProvider>
           </AuthProvider>

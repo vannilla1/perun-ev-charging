@@ -11,6 +11,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => void;
   error: string | null;
   clearError: () => void;
 }
@@ -79,6 +80,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
   }, []);
 
+  // Refresh user state z localStorage (po profile update, atď.)
+  const refreshUser = useCallback(() => {
+    const currentUser = getCurrentUser();
+    setUser(currentUser);
+  }, []);
+
   const value: AuthContextType = {
     user,
     isLoading,
@@ -86,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     register,
     logout,
+    refreshUser,
     error,
     clearError,
   };

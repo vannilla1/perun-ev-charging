@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ObjectId } from 'mongodb';
+import { decodeToken } from '@/lib/services/authHelper';
+import { getDb, COLLECTIONS, UserDocument } from '@/lib/mongodb';
+import { hashPassword, comparePassword } from '@/lib/services/userService';
 
-// POST /api/auth/change-password
-// Zmena hesla prihláseného používateľa
 export async function POST(request: NextRequest) {
   try {
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: 'Nie ste prihlásený' }, { status: 401 });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const payload = await decodeToken(token);
+    if (!payload || !payload.userId) {
+      return NextResponse.json({ error: 'Neplatný token' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { currentPassword, newPassword } = body;
 
@@ -21,21 +34,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Pre zmenu hesla v smart-me/eCarUp systéme:
-    // 1. Používateľ musí byť autentifikovaný
-    // 2. smart-me nepodporuje priamu zmenu hesla cez API
-    // 3. Používateľ musí použiť: https://smart-me.com/Account/Manage
-    //
-    // Pre MVP simulujeme úspešnú zmenu
-    // V produkcii by sme:
-    // 1. Overili aktuálne heslo pokusom o prihlásenie
-    // 2. Presmerovali na smart-me password change
-    // 3. Alebo implementovali vlastný user management
+    // Nájdi používateľa
+    const db = await getDb();
+    const orConditions: Record<string, unknown>[] = [
+      { email: payload.userId },
+      { ecarupCustomerId: payload.userId },
+    ];
+    try {
+      if (ObjectId.isValid(payload.userId)) {
+        orConditions.unshift({ _id: new ObjectId(payload.userId) });
+      }
+    } catch {
+      // Nie je platné ObjectId
+    }
 
-    // Simulácia - v produkcii by tu bola skutočná validácia
-    console.log('Password change requested');
+    const user = await db.collection<UserDocument>(COLLECTIONS.USERS).findOne({
+      $or: orConditions,
+    });
 
-    // Pre demo účely vždy vrátime úspech
+    if (!user) {
+      return NextResponse.json({ error: 'Používateľ nebol nájdený' }, { status: 404 });
+    }
+
+    // Over aktuálne heslo (podporuje bcrypt aj legacy SHA-256)
+    const isPasswordValid = await comparePassword(currentPassword, user.passwordHash);
+    if (!isPasswordValid) {
+      return NextResponse.json({ error: 'Nesprávne aktuálne heslo' }, { status: 401 });
+    }
+
+    // Zmeň heslo v DB (vždy bcrypt)
+    const newHash = await hashPassword(newPassword);
+    const newBasicAuth = Buffer.from(`${user.email}:${newPassword}`).toString('base64');
+
+    await db.collection<UserDocument>(COLLECTIONS.USERS).updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          passwordHash: newHash,
+          smartmeBasicAuth: newBasicAuth,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    console.log(`[ChangePassword] Password changed for: ${user.email}`);
+
     return NextResponse.json({
       success: true,
       message: 'Heslo bolo úspešne zmenené',

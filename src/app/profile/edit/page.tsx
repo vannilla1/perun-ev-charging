@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts';
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [firstName, setFirstName] = useState(user?.firstName || '');
   const [lastName, setLastName] = useState(user?.lastName || '');
   const [phone, setPhone] = useState(user?.phone || '');
@@ -33,7 +33,7 @@ export default function EditProfilePage() {
         const data = await res.json();
         throw new Error(data.error || 'Nepodarilo sa uložiť');
       }
-      // Update localStorage user data
+      // Update localStorage user data a refreshnúť AuthContext
       const userData = localStorage.getItem('user');
       if (userData) {
         const parsed = JSON.parse(userData);
@@ -42,6 +42,7 @@ export default function EditProfilePage() {
         parsed.phone = phone;
         localStorage.setItem('user', JSON.stringify(parsed));
       }
+      refreshUser();
       setSaved(true);
       setTimeout(() => router.back(), 1200);
     } catch (err) {

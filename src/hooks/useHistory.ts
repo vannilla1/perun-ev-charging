@@ -18,7 +18,7 @@ export function useHistory(period: HistoryPeriod = 'all') {
   const isDemoAccount = user?.email ? DEMO_EMAILS.includes(user.email.toLowerCase()) : false;
 
   const query = useQuery({
-    queryKey: ['history', isDemoAccount],
+    queryKey: ['history', user?.email ?? null, isDemoAccount],
     queryFn: () => isDemoAccount ? getUserHistory() : Promise.resolve({ sessions: [], totalEnergy: 0, totalCost: 0, totalSessions: 0 }),
     staleTime: 60 * 1000, // 1 minúta
   });

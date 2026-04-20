@@ -65,9 +65,9 @@ export async function POST(request: NextRequest) {
     });
 
     // Vytvorenie tokenov
-    const userId = newUser._id || newUser.email;
-    const accessToken = generateToken(userId);
-    const refreshToken = generateRefreshToken(userId);
+    const userId = String(newUser._id || newUser.email);
+    const accessToken = await generateToken(userId);
+    const refreshToken = await generateRefreshToken(userId);
 
     return NextResponse.json({
       user: formatUserForResponse(newUser),

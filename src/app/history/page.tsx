@@ -3,14 +3,8 @@
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { AppLayout, PageHeader } from '@/components/Layout';
-import { Card, CardContent, Loading } from '@/components/Common';
+import { Card, CardContent, Loading, BoltIcon } from '@/components/Common';
 import { useHistory, type HistoryPeriod } from '@/hooks';
-
-const BoltIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-  </svg>
-);
 
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
@@ -155,7 +149,7 @@ export default function HistoryPage() {
             <Card>
               <CardContent className="text-center py-12">
                 <div className="text-[var(--text-muted)] mb-4 flex justify-center">
-                  <BoltIcon />
+                  <BoltIcon className="h-5 w-5" />
                 </div>
                 <h3 className="font-medium text-[var(--text-primary)] mb-1">
                   {t('noHistory')}
@@ -172,7 +166,7 @@ export default function HistoryPage() {
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-[var(--secondary)] bg-opacity-10 flex items-center justify-center text-[var(--secondary)]">
-                        <BoltIcon />
+                        <BoltIcon className="h-5 w-5" />
                       </div>
                       <div>
                         <h3 className="font-medium text-[var(--text-primary)]">

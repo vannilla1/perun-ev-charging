@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
+import { requireAuth as checkAuth } from '@/lib/services/authHelper';
+
+async function isAuthenticated(request: NextRequest): Promise<boolean> {
+  const authHeader = request.headers.get('authorization');
+  const userId = await checkAuth(authHeader);
+  return !!userId;
+}
 
 // GET /api/qr-mappings - Získať všetky mapovania alebo vyhľadať podľa serial
 export async function GET(request: NextRequest) {
@@ -34,8 +41,12 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/qr-mappings - Pridať nové mapovanie
+// POST /api/qr-mappings - Pridať nové mapovanie (vyžaduje auth)
 export async function POST(request: NextRequest) {
+  if (!(await isAuthenticated(request))) {
+    return NextResponse.json({ error: 'Nie ste prihlásený' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { serial, stationId, stationName } = body;
@@ -79,8 +90,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE /api/qr-mappings - Odstrániť mapovanie
+// DELETE /api/qr-mappings - Odstrániť mapovanie (vyžaduje auth)
 export async function DELETE(request: NextRequest) {
+  if (!(await isAuthenticated(request))) {
+    return NextResponse.json({ error: 'Nie ste prihlásený' }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const serial = searchParams.get('serial');

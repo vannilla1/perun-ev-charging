@@ -1,14 +1,6 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
 import { API_CONFIG } from './config';
 
 // eCarUp OAuth 2.0 Client Credentials Flow
-interface OAuthTokenResponse {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  scope: string;
-}
-
 interface TokenCache {
   token: string;
   expiresAt: number;
@@ -23,40 +15,32 @@ export async function getEcarUpToken(): Promise<string> {
     return tokenCache.token;
   }
 
-  // Skontroluj credentials
   if (!API_CONFIG.clientId || !API_CONFIG.clientSecret) {
     throw new Error('eCarUp API credentials nie sú nakonfigurované');
   }
 
-  try {
-    const response = await axios.post<OAuthTokenResponse>(
-      API_CONFIG.oauthUrl,
-      new URLSearchParams({
-        grant_type: 'client_credentials',
-        client_id: API_CONFIG.clientId,
-        client_secret: API_CONFIG.clientSecret,
-        scope: API_CONFIG.scope,
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }
-    );
+  const response = await fetch(API_CONFIG.oauthUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: API_CONFIG.clientId,
+      client_secret: API_CONFIG.clientSecret,
+      scope: API_CONFIG.scope,
+    }),
+  });
 
-    const { access_token, expires_in } = response.data;
-
-    // Cache token
-    tokenCache = {
-      token: access_token,
-      expiresAt: Date.now() + expires_in * 1000,
-    };
-
-    return access_token;
-  } catch (error) {
-    console.error('eCarUp OAuth chyba:', error);
+  if (!response.ok) {
     throw new Error('Nepodarilo sa získať prístupový token');
   }
+
+  const data = await response.json();
+  tokenCache = {
+    token: data.access_token,
+    expiresAt: Date.now() + data.expires_in * 1000,
+  };
+
+  return data.access_token;
 }
 
 // Vyčistenie token cache
@@ -64,66 +48,54 @@ export function clearTokenCache(): void {
   tokenCache = null;
 }
 
-// eCarUp API klient s automatickou autentifikáciou
-export const ecarupClient: AxiosInstance = axios.create({
-  baseURL: API_CONFIG.baseUrl,
-  timeout: API_CONFIG.timeout,
-  headers: {
+// Fetch-based eCarUp API helper
+async function fetchEcarup<T>(
+  url: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = await getEcarUpToken();
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
-  },
-});
+    Authorization: `Bearer ${token}`,
+    ...(options.headers as Record<string, string> || {}),
+  };
 
-// Request interceptor - automatické pridanie tokenu
-ecarupClient.interceptors.request.use(
-  async (config) => {
-    try {
-      const token = await getEcarUpToken();
-      config.headers.Authorization = `Bearer ${token}`;
-    } catch {
-      // Ak nemáme token, pokračujeme bez neho (pre public endpointy)
-      console.warn('Nepodarilo sa získať eCarUp token');
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+  let response = await fetch(`${API_CONFIG.baseUrl}${url}`, { ...options, headers });
 
-// Response interceptor - retry pri 401
-ecarupClient.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const config = error.config;
-
-    if (error.response?.status === 401 && config && !config.headers['X-Retry']) {
-      // Vyčisti cache a skús znova
-      clearTokenCache();
-      config.headers['X-Retry'] = 'true';
-
-      try {
-        const token = await getEcarUpToken();
-        config.headers.Authorization = `Bearer ${token}`;
-        return ecarupClient(config);
-      } catch {
-        return Promise.reject(error);
-      }
-    }
-
-    return Promise.reject(error);
+  // Retry pri 401 s novým tokenom
+  if (response.status === 401) {
+    clearTokenCache();
+    const newToken = await getEcarUpToken();
+    headers.Authorization = `Bearer ${newToken}`;
+    response = await fetch(`${API_CONFIG.baseUrl}${url}`, { ...options, headers });
   }
-);
+
+  if (!response.ok) {
+    throw new Error(`eCarUp API error: ${response.status}`);
+  }
+
+  return response.json();
+}
 
 // Helper pre eCarUp API volania
 export const ecarup = {
-  get: <T>(url: string, params?: Record<string, unknown>) =>
-    ecarupClient.get<T>(url, { params }).then((res) => res.data),
+  get: <T>(url: string, params?: Record<string, unknown>) => {
+    const searchParams = params ? '?' + new URLSearchParams(
+      Object.entries(params).reduce((acc, [k, v]) => {
+        if (v !== undefined && v !== null) acc[k] = String(v);
+        return acc;
+      }, {} as Record<string, string>)
+    ).toString() : '';
+    return fetchEcarup<T>(url + searchParams);
+  },
 
   post: <T>(url: string, data?: unknown) =>
-    ecarupClient.post<T>(url, data).then((res) => res.data),
+    fetchEcarup<T>(url, { method: 'POST', body: data ? JSON.stringify(data) : undefined }),
 
   put: <T>(url: string, data?: unknown) =>
-    ecarupClient.put<T>(url, data).then((res) => res.data),
+    fetchEcarup<T>(url, { method: 'PUT', body: data ? JSON.stringify(data) : undefined }),
 
   delete: <T>(url: string) =>
-    ecarupClient.delete<T>(url).then((res) => res.data),
+    fetchEcarup<T>(url, { method: 'DELETE' }),
 };

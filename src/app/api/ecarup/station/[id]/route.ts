@@ -1,54 +1,5 @@
 import { NextResponse } from 'next/server';
-
-const ECARUP_API_BASE = 'https://public-api.ecarup.com';
-const OAUTH_TOKEN_URL = 'https://api.smart-me.com/oauth/token';
-
-// Server-side cache pre token
-let cachedToken: string | null = null;
-let tokenExpiry: number | null = null;
-
-async function getAccessToken(): Promise<string | null> {
-  if (cachedToken && tokenExpiry && Date.now() < tokenExpiry) {
-    return cachedToken;
-  }
-
-  const clientId = process.env.NEXT_PUBLIC_SMARTME_CLIENT_ID;
-  const clientSecret = process.env.SMARTME_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    console.error('OAuth credentials not configured');
-    return null;
-  }
-
-  try {
-    const params = new URLSearchParams();
-    params.append('grant_type', 'client_credentials');
-    params.append('client_id', clientId);
-    params.append('client_secret', clientSecret);
-
-    const response = await fetch(OAUTH_TOKEN_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params,
-    });
-
-    if (!response.ok) {
-      console.error('Failed to get OAuth token:', response.status);
-      return null;
-    }
-
-    const data = await response.json();
-    cachedToken = data.access_token;
-    tokenExpiry = Date.now() + (data.expires_in * 1000 * 0.9);
-
-    return cachedToken;
-  } catch (error) {
-    console.error('OAuth request failed:', error);
-    return null;
-  }
-}
+import { getEcarupAccessToken, ECARUP_API_BASE } from '@/lib/services/ecarupAuth';
 
 export async function GET(
   request: Request,
@@ -56,7 +7,7 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const accessToken = await getAccessToken();
+  const accessToken = await getEcarupAccessToken();
 
   if (!accessToken) {
     return NextResponse.json(

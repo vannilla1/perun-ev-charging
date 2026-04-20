@@ -1,5 +1,11 @@
-import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import { SignJWT, jwtVerify } from 'jose';
 import { getDb, UserDocument, COLLECTIONS } from '../mongodb';
+
+// JWT secret — musí byť nastavený v env premenných
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'perun-ev-charging-default-secret-change-me'
+);
 
 // In-memory fallback keď MongoDB nie je dostupné
 const inMemoryUsers = new Map<string, UserDocument>();
@@ -14,28 +20,62 @@ async function isMongoAvailable(): Promise<boolean> {
   }
 }
 
-// Hash hesla
-export function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex');
+// Hash hesla (bcrypt so salt rounds = 12)
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 12);
 }
 
-// Generovanie tokenov
-export function generateToken(userId: string): string {
-  const payload = {
-    userId,
-    type: 'access',
-    exp: Date.now() + 3600 * 1000, // 1 hodina
-  };
-  return Buffer.from(JSON.stringify(payload)).toString('base64');
+// Porovnanie hesla s hashom (podporuje aj legacy SHA-256)
+export async function comparePassword(password: string, hash: string): Promise<boolean> {
+  // Ak hash začína $2, je to bcrypt
+  if (hash.startsWith('$2')) {
+    return bcrypt.compare(password, hash);
+  }
+  // Legacy SHA-256 fallback — pre staré účty
+  const crypto = await import('crypto');
+  const sha256Hash = crypto.createHash('sha256').update(password).digest('hex');
+  return sha256Hash === hash;
 }
 
-export function generateRefreshToken(userId: string): string {
-  const payload = {
-    userId,
-    type: 'refresh',
-    exp: Date.now() + 30 * 24 * 3600 * 1000, // 30 dní
-  };
-  return Buffer.from(JSON.stringify(payload)).toString('base64');
+// Generovanie podpísaného JWT access tokenu
+export async function generateToken(userId: string): Promise<string> {
+  return new SignJWT({ userId, type: 'access' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('1h')
+    .sign(JWT_SECRET);
+}
+
+// Generovanie podpísaného JWT refresh tokenu
+export async function generateRefreshToken(userId: string): Promise<string> {
+  return new SignJWT({ userId, type: 'refresh' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('30d')
+    .sign(JWT_SECRET);
+}
+
+// Verifikácia a dekódovanie JWT tokenu
+export async function verifyToken(token: string): Promise<{ userId: string; type: string } | null> {
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    return {
+      userId: payload.userId as string,
+      type: payload.type as string,
+    };
+  } catch {
+    // Fallback: skúsiť legacy Base64 formát (pre existujúce tokeny)
+    try {
+      const json = Buffer.from(token, 'base64').toString('utf-8');
+      const parsed = JSON.parse(json);
+      if (parsed.userId && parsed.exp && parsed.exp > Date.now()) {
+        return { userId: parsed.userId, type: parsed.type || 'access' };
+      }
+    } catch {
+      // Ani legacy formát nefunguje
+    }
+    return null;
+  }
 }
 
 // Nájsť používateľa podľa emailu
@@ -51,7 +91,7 @@ export async function findUserByEmail(email: string): Promise<UserDocument | nul
       });
       if (user) return user;
     }
-  } catch (error) {
+  } catch {
     console.warn('[UserService] MongoDB not available, using in-memory fallback');
   }
 
@@ -70,7 +110,7 @@ export async function createUser(data: {
   const now = new Date();
   const user: UserDocument = {
     email: data.email.toLowerCase().trim(),
-    passwordHash: hashPassword(data.password),
+    passwordHash: await hashPassword(data.password),
     firstName: data.firstName?.trim() || '',
     lastName: data.lastName?.trim() || '',
     phone: data.phone?.trim() || '',
@@ -104,8 +144,23 @@ export async function verifyPassword(email: string, password: string): Promise<U
   const user = await findUserByEmail(email);
   if (!user) return null;
 
-  const passwordHash = hashPassword(password);
-  if (user.passwordHash !== passwordHash) return null;
+  const isValid = await comparePassword(password, user.passwordHash);
+  if (!isValid) return null;
+
+  // Auto-migrate: ak je starý SHA-256 hash, upgradnúť na bcrypt
+  if (!user.passwordHash.startsWith('$2')) {
+    try {
+      const newHash = await hashPassword(password);
+      const db = await getDb();
+      await db.collection<UserDocument>(COLLECTIONS.USERS).updateOne(
+        { email: user.email },
+        { $set: { passwordHash: newHash, updatedAt: new Date() } }
+      );
+      console.log(`[UserService] Migrated password hash to bcrypt for: ${user.email}`);
+    } catch {
+      // Nepodarilo sa migrovať, ale login pokračuje
+    }
+  }
 
   return user;
 }
@@ -176,7 +231,7 @@ export function formatUserForResponse(user: UserDocument) {
     firstName: user.firstName,
     lastName: user.lastName,
     phone: user.phone,
-    createdAt: user.createdAt.toISOString(),
+    createdAt: user.createdAt instanceof Date ? user.createdAt.toISOString() : String(user.createdAt),
     preferredLanguage: user.preferredLanguage,
   };
 }

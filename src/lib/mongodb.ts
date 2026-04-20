@@ -11,20 +11,9 @@ if (!MONGODB_URI) {
 // Globálne premenné pre connection pooling
 let cachedClient: MongoClient | null = null;
 let cachedDb: Db | null = null;
+let connectionPromise: Promise<{ client: MongoClient; db: Db }> | null = null;
 
-export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db }> {
-  // Ak máme cached connection, overíme že funguje
-  if (cachedClient && cachedDb) {
-    try {
-      await cachedDb.command({ ping: 1 });
-      return { client: cachedClient, db: cachedDb };
-    } catch {
-      console.log('[MongoDB] Cached connection stale, reconnecting...');
-      cachedClient = null;
-      cachedDb = null;
-    }
-  }
-
+async function _connectToDatabase(): Promise<{ client: MongoClient; db: Db }> {
   if (!MONGODB_URI) {
     throw new Error('MONGODB_URI is not defined in environment variables');
   }
@@ -46,6 +35,31 @@ export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db
   console.log('[MongoDB] Connected to:', MONGODB_DB);
 
   return { client, db };
+}
+
+export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db }> {
+  // Ak máme cached connection, overíme že funguje
+  if (cachedClient && cachedDb) {
+    try {
+      await cachedDb.command({ ping: 1 });
+      return { client: cachedClient, db: cachedDb };
+    } catch {
+      console.log('[MongoDB] Cached connection stale, reconnecting...');
+      cachedClient = null;
+      cachedDb = null;
+    }
+  }
+
+  // Mutex — ak už prebieha pripojenie, počkáme na výsledok
+  if (connectionPromise) {
+    return connectionPromise;
+  }
+
+  connectionPromise = _connectToDatabase().finally(() => {
+    connectionPromise = null;
+  });
+
+  return connectionPromise;
 }
 
 // Pomocná funkcia na získanie databázy

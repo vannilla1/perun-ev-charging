@@ -10,7 +10,7 @@ import {
   updateUser,
 } from '@/lib/services/userService';
 
-// Demo účty pre testovanie (vždy dostupné)
+// Demo účty pre testovanie
 const DEMO_ACCOUNTS = [
   {
     email: 'demo@perun.sk',
@@ -55,31 +55,33 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // 1. Kontrola demo účtov (pre testovanie)
-    const demoAccount = DEMO_ACCOUNTS.find(
-      (acc) => acc.email.toLowerCase() === normalizedEmail && acc.password === password
-    );
+    // 1. Demo účty (len v development móde)
+    if (process.env.NODE_ENV !== 'production') {
+      const demoAccount = DEMO_ACCOUNTS.find(
+        (acc) => acc.email.toLowerCase() === normalizedEmail && acc.password === password
+      );
 
-    if (demoAccount) {
-      console.log(`[Login] Demo account: ${normalizedEmail}`);
-      return NextResponse.json({
-        user: demoAccount.user,
-        tokens: {
-          accessToken: generateToken(demoAccount.user.id),
-          refreshToken: generateRefreshToken(demoAccount.user.id),
-          expiresIn: 3600,
-          tokenType: 'Bearer',
-        },
-      });
+      if (demoAccount) {
+        console.log(`[Login] Demo account: ${normalizedEmail}`);
+        return NextResponse.json({
+          user: demoAccount.user,
+          tokens: {
+            accessToken: await generateToken(demoAccount.user.id),
+            refreshToken: await generateRefreshToken(demoAccount.user.id),
+            expiresIn: 3600,
+            tokenType: 'Bearer',
+          },
+        });
+      }
     }
 
-    // 2. Kontrola MongoDB databázy
+    // 2. MongoDB databáza
     try {
       const user = await verifyPassword(normalizedEmail, password);
 
       if (user) {
         console.log(`[Login] Success from MongoDB: ${normalizedEmail}`);
-        const userId = user._id || user.email;
+        const userId = String(user._id || user.email);
 
         // Aktualizujeme smartmeBasicAuth ak je eCarUp prepojený
         if (user.ecarupLinked && !user.smartmeBasicAuth) {
@@ -90,8 +92,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           user: formatUserForResponse(user),
           tokens: {
-            accessToken: generateToken(userId),
-            refreshToken: generateRefreshToken(userId),
+            accessToken: await generateToken(userId),
+            refreshToken: await generateRefreshToken(userId),
             expiresIn: 3600,
             tokenType: 'Bearer',
           },
@@ -134,12 +136,12 @@ export async function POST(request: NextRequest) {
             smartmeBasicAuth: basicAuthToken,
           });
 
-          const userId = newUser._id || newUser.email;
+          const userId = String(newUser._id || newUser.email);
           return NextResponse.json({
             user: formatUserForResponse(newUser),
             tokens: {
-              accessToken: generateToken(userId),
-              refreshToken: generateRefreshToken(userId),
+              accessToken: await generateToken(userId),
+              refreshToken: await generateRefreshToken(userId),
               expiresIn: 3600,
               tokenType: 'Bearer',
             },
@@ -158,8 +160,8 @@ export async function POST(request: NextRequest) {
               preferredLanguage: 'sk',
             },
             tokens: {
-              accessToken: generateToken(userId),
-              refreshToken: generateRefreshToken(userId),
+              accessToken: await generateToken(userId),
+              refreshToken: await generateRefreshToken(userId),
               expiresIn: 3600,
               tokenType: 'Bearer',
             },
@@ -185,7 +187,6 @@ export async function POST(request: NextRequest) {
 }
 
 // Pokus o prihlásenie cez eCarUp/smart-me Basic Auth API
-// Smart-me API podporuje Basic Auth na GET /api/User endpoint
 async function tryEcarupLogin(email: string, password: string): Promise<{
   smartmeId: string;
   username: string;
@@ -213,8 +214,14 @@ async function tryEcarupLogin(email: string, password: string): Promise<{
   const userData = await response.json();
   console.log(`[eCarUp BasicAuth] Success for: ${email} (ID: ${userData.idAsString || userData.id})`);
 
+  const smartmeId = userData.idAsString || userData.id;
+  if (!smartmeId) {
+    console.warn(`[eCarUp BasicAuth] No user ID found in response for: ${email}`);
+    return null;
+  }
+
   return {
-    smartmeId: String(userData.idAsString || userData.id),
+    smartmeId: String(smartmeId),
     username: userData.username || '',
     email: userData.email || email,
   };

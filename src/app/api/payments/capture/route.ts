@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { requireAuth } from '@/lib/services/authHelper';
 
 // Stripe is optional - only initialize if key is provided
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -10,6 +11,12 @@ const stripe = process.env.STRIPE_SECRET_KEY
 // Capture skutočnej sumy po ukončení nabíjania
 export async function POST(request: NextRequest) {
   try {
+    // Auth kontrola
+    const userId = await requireAuth(request.headers.get('authorization'));
+    if (!userId) {
+      return NextResponse.json({ error: 'Nie ste prihlásený' }, { status: 401 });
+    }
+
     if (!stripe) {
       return NextResponse.json(
         { error: 'Stripe nie je nakonfigurovaný' },
