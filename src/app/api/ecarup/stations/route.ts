@@ -348,7 +348,17 @@ export async function GET(request: Request) {
 
   if (!accessToken) {
     return NextResponse.json(
-      { error: 'Failed to authenticate with eCarUp API' },
+      {
+        error: 'Failed to authenticate with eCarUp API',
+        diagnostics: {
+          hasSmartmeClientId: !!process.env.SMARTME_CLIENT_ID,
+          hasNextPublicSmartmeClientId: !!process.env.NEXT_PUBLIC_SMARTME_CLIENT_ID,
+          hasNextPublicEcarupClientId: !!process.env.NEXT_PUBLIC_ECARUP_CLIENT_ID,
+          hasSmartmeClientSecret: !!process.env.SMARTME_CLIENT_SECRET,
+          hasEcarupClientSecret: !!process.env.ECARUP_CLIENT_SECRET,
+          nodeEnv: process.env.NODE_ENV,
+        },
+      },
       { status: 401 }
     );
   }

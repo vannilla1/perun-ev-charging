@@ -20,11 +20,21 @@ export async function getEcarupAccessToken(): Promise<string | null> {
     return cachedToken;
   }
 
-  const clientId = process.env.SMARTME_CLIENT_ID || process.env.NEXT_PUBLIC_SMARTME_CLIENT_ID;
-  const clientSecret = process.env.SMARTME_CLIENT_SECRET;
+  const clientId =
+    process.env.SMARTME_CLIENT_ID ||
+    process.env.NEXT_PUBLIC_SMARTME_CLIENT_ID ||
+    process.env.NEXT_PUBLIC_ECARUP_CLIENT_ID;
+  const clientSecret =
+    process.env.SMARTME_CLIENT_SECRET || process.env.ECARUP_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    console.warn('[eCarUp Auth] Missing SMARTME_CLIENT_ID or SMARTME_CLIENT_SECRET');
+    console.error('[eCarUp Auth] Missing credentials:', {
+      hasSmartmeClientId: !!process.env.SMARTME_CLIENT_ID,
+      hasNextPublicSmartmeClientId: !!process.env.NEXT_PUBLIC_SMARTME_CLIENT_ID,
+      hasNextPublicEcarupClientId: !!process.env.NEXT_PUBLIC_ECARUP_CLIENT_ID,
+      hasSmartmeClientSecret: !!process.env.SMARTME_CLIENT_SECRET,
+      hasEcarupClientSecret: !!process.env.ECARUP_CLIENT_SECRET,
+    });
     return null;
   }
 
@@ -41,7 +51,8 @@ export async function getEcarupAccessToken(): Promise<string | null> {
     });
 
     if (!response.ok) {
-      console.error(`[eCarUp Auth] Token request failed: ${response.status}`);
+      const errorBody = await response.text().catch(() => '');
+      console.error(`[eCarUp Auth] Token request failed: ${response.status} ${errorBody}`);
       return null;
     }
 
@@ -50,6 +61,7 @@ export async function getEcarupAccessToken(): Promise<string | null> {
     // Cache s 5-minútovým bufferom pred expiráciou
     tokenExpiry = Date.now() + (data.expires_in - 300) * 1000;
 
+    console.log('[eCarUp Auth] Successfully fetched token, expires in:', data.expires_in);
     return cachedToken;
   } catch (error) {
     console.error('[eCarUp Auth] Token request error:', error);
