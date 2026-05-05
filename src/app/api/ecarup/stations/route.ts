@@ -347,25 +347,8 @@ export async function GET(request: Request) {
   const accessToken = await getEcarupAccessToken();
 
   if (!accessToken) {
-    const prefix = (v?: string) => (v ? `${v.slice(0, 4)}…(${v.length})` : 'unset');
     return NextResponse.json(
-      {
-        error: 'Failed to authenticate with eCarUp API',
-        diagnostics: {
-          smartmeClientId: prefix(process.env.SMARTME_CLIENT_ID),
-          nextPublicSmartmeClientId: prefix(process.env.NEXT_PUBLIC_SMARTME_CLIENT_ID),
-          nextPublicEcarupClientId: prefix(process.env.NEXT_PUBLIC_ECARUP_CLIENT_ID),
-          smartmeClientSecret: prefix(process.env.SMARTME_CLIENT_SECRET),
-          ecarupClientSecret: prefix(process.env.ECARUP_CLIENT_SECRET),
-          nodeEnv: process.env.NODE_ENV,
-          // Ktoré sa použijú v ecarupAuth.ts:
-          usedClientIdSource: process.env.SMARTME_CLIENT_ID
-            ? 'SMARTME_CLIENT_ID'
-            : process.env.NEXT_PUBLIC_SMARTME_CLIENT_ID
-            ? 'NEXT_PUBLIC_SMARTME_CLIENT_ID'
-            : 'NEXT_PUBLIC_ECARUP_CLIENT_ID',
-        },
-      },
+      { error: 'Failed to authenticate with eCarUp API' },
       { status: 401 }
     );
   }
