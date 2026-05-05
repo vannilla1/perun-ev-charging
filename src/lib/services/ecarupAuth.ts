@@ -20,10 +20,12 @@ export async function getEcarupAccessToken(): Promise<string | null> {
     return cachedToken;
   }
 
+  // Priorita: pôvodné NEXT_PUBLIC_* premenné prvé (známe-funkčné),
+  // potom nové SMARTME_CLIENT_ID (len ak prvé chýbajú)
   const clientId =
-    process.env.SMARTME_CLIENT_ID ||
     process.env.NEXT_PUBLIC_SMARTME_CLIENT_ID ||
-    process.env.NEXT_PUBLIC_ECARUP_CLIENT_ID;
+    process.env.NEXT_PUBLIC_ECARUP_CLIENT_ID ||
+    process.env.SMARTME_CLIENT_ID;
   const clientSecret =
     process.env.SMARTME_CLIENT_SECRET || process.env.ECARUP_CLIENT_SECRET;
 
