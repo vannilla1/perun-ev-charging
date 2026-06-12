@@ -93,8 +93,9 @@ export interface UserDocument {
   ecarupCustomerId?: string;
   ecarupAccessToken?: string;
   ecarupRefreshToken?: string;
-  smartmeBasicAuth?: string; // Base64 encoded email:password pre smart-me API
+  smartmeBasicAuth?: string; // smart-me Basic Auth — zašifrované ('enc:v1:...') alebo legacy base64
   // Platobné metódy
+  stripeCustomerId?: string; // Stripe customer patriaci tomuto používateľovi
   paymentMethods?: PaymentMethodDocument[];
   defaultPaymentMethodId?: string;
 }

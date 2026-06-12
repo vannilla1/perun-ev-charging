@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { getAuthenticatedUser } from '@/lib/services/authHelper';
+import { paymentIntentBelongsToUser } from '@/lib/services/stripeCustomer';
 
 // Stripe is optional - only initialize if key is provided
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -7,7 +9,9 @@ const stripe = process.env.STRIPE_SECRET_KEY
   : null;
 
 // POST /api/payments/cancel-preauth
-// Zrušenie predautorizácie ak nabíjanie zlyhá alebo je zrušené
+// Zrušenie predautorizácie ak nabíjanie zlyhá alebo je zrušené.
+// Bezpečnosť: len vlastné PaymentIntenty — inak by útočník vedel rušiť cudzie
+// predautorizácie a blokovať nabíjanie iných používateľov.
 export async function POST(request: NextRequest) {
   try {
     if (!stripe) {
@@ -15,6 +19,11 @@ export async function POST(request: NextRequest) {
         { error: 'Stripe nie je nakonfigurovaný' },
         { status: 503 }
       );
+    }
+
+    const user = await getAuthenticatedUser(request.headers.get('authorization'));
+    if (!user) {
+      return NextResponse.json({ error: 'Neautorizovaný prístup' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -29,6 +38,14 @@ export async function POST(request: NextRequest) {
 
     // Získame PaymentIntent pre overenie
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    const ownerId = String(user._id || user.email);
+    if (!(await paymentIntentBelongsToUser(stripe, paymentIntent, ownerId, user))) {
+      return NextResponse.json(
+        { error: 'PaymentIntent nepatrí prihlásenému používateľovi' },
+        { status: 403 }
+      );
+    }
 
     // Skontrolujeme či je možné zrušiť
     const cancellableStatuses = [

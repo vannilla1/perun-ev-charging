@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { getAuthenticatedUser } from '@/lib/services/authHelper';
+import {
+  resolveOwnStripeCustomerId,
+  paymentMethodBelongsToCustomer,
+} from '@/lib/services/stripeCustomer';
 
 // Stripe is optional - only initialize if key is provided
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
 
-// GET /api/payments/methods?customerId=xxx
-// Získanie platobných metód zákazníka
+// GET /api/payments/methods
+// Získanie platobných metód PRIHLÁSENÉHO zákazníka.
+// Bezpečnosť: customerId sa NIKDY nepreberá od klienta — odvodzuje sa zo
+// session používateľa (IDOR ochrana: cudzie customerId = 403).
 export async function GET(request: NextRequest) {
   try {
     if (!stripe) {
@@ -17,23 +24,33 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const customerId = searchParams.get('customerId');
+    const user = await getAuthenticatedUser(request.headers.get('authorization'));
+    if (!user) {
+      return NextResponse.json({ error: 'Neautorizovaný prístup' }, { status: 401 });
+    }
 
-    if (!customerId) {
+    const ownCustomerId = await resolveOwnStripeCustomerId(stripe, user);
+    if (!ownCustomerId) {
+      // Používateľ ešte nemá Stripe customera — žiadne uložené karty
+      return NextResponse.json({ methods: [] });
+    }
+
+    // Legacy klient môže stále posielať ?customerId= — akceptujeme len vlastné
+    const requestedCustomerId = new URL(request.url).searchParams.get('customerId');
+    if (requestedCustomerId && requestedCustomerId !== ownCustomerId) {
       return NextResponse.json(
-        { error: 'Customer ID je povinné' },
-        { status: 400 }
+        { error: 'Prístup k cudziemu zákazníkovi nie je povolený' },
+        { status: 403 }
       );
     }
 
     const paymentMethods = await stripe.paymentMethods.list({
-      customer: customerId,
+      customer: ownCustomerId,
       type: 'card',
     });
 
     // Získanie default payment method
-    const customer = await stripe.customers.retrieve(customerId);
+    const customer = await stripe.customers.retrieve(ownCustomerId);
     const defaultPaymentMethodId =
       typeof customer !== 'string' && !customer.deleted
         ? customer.invoice_settings?.default_payment_method
@@ -67,7 +84,7 @@ export async function GET(request: NextRequest) {
 }
 
 // DELETE /api/payments/methods
-// Odstránenie platobnej metódy
+// Odstránenie platobnej metódy — len vlastnej (overenie väzby na customera).
 export async function DELETE(request: NextRequest) {
   try {
     if (!stripe) {
@@ -77,6 +94,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    const user = await getAuthenticatedUser(request.headers.get('authorization'));
+    if (!user) {
+      return NextResponse.json({ error: 'Neautorizovaný prístup' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { paymentMethodId } = body;
 
@@ -84,6 +106,17 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json(
         { error: 'Payment method ID je povinné' },
         { status: 400 }
+      );
+    }
+
+    const ownCustomerId = await resolveOwnStripeCustomerId(stripe, user);
+    if (
+      !ownCustomerId ||
+      !(await paymentMethodBelongsToCustomer(stripe, paymentMethodId, ownCustomerId))
+    ) {
+      return NextResponse.json(
+        { error: 'Platobná metóda nepatrí prihlásenému používateľovi' },
+        { status: 403 }
       );
     }
 

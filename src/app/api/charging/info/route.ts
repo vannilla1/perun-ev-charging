@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
 import { getEcarupAccessToken, ECARUP_API_BASE } from '@/lib/services/ecarupAuth';
+import { getAuthenticatedUser } from '@/lib/services/authHelper';
 
 // Funkcia na vyhľadanie mapovania v MongoDB
 async function findStationBySerial(serial: string): Promise<string | null> {
@@ -118,8 +119,11 @@ export async function POST(request: NextRequest) {
     let userPricePerKwh: number | undefined;
     let userPricePerH: number | undefined;
 
-    // Získať userEmail z request body pre individuálne ceny
-    const userEmail = body.userEmail?.toLowerCase() || null;
+    // Individuálne ceny: identita sa odvodzuje z OVERENÉHO tokenu, nie z body —
+    // klientom poslaný userEmail by umožnil zistiť dohodnuté ceny iného zákazníka.
+    // Bez prihlásenia sa individuálne ceny neaplikujú (verejné info o stanici).
+    const authedUser = await getAuthenticatedUser(request.headers.get('authorization'));
+    const userEmail = authedUser?.email?.toLowerCase() || null;
 
     try {
       const stationsParams = new URLSearchParams();

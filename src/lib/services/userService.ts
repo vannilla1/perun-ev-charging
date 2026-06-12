@@ -2,10 +2,26 @@ import bcrypt from 'bcryptjs';
 import { SignJWT, jwtVerify } from 'jose';
 import { getDb, UserDocument, COLLECTIONS } from '../mongodb';
 
-// JWT secret — musí byť nastavený v env premenných
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'perun-ev-charging-default-secret-change-me'
-);
+// JWT secret — v produkcii MUSÍ byť nastavený v env premenných (fail-closed)
+// DEV fallback je povolený len mimo produkcie.
+const DEV_JWT_FALLBACK = 'perun-ev-charging-default-secret-change-me';
+
+if (!process.env.JWT_SECRET) {
+  if (
+    process.env.NODE_ENV === 'production' &&
+    // Počas `next build` ešte env premenné nemusia byť k dispozícii —
+    // fail-closed kontrola platí pre runtime (Render ich injektuje pri štarte)
+    process.env.NEXT_PHASE !== 'phase-production-build'
+  ) {
+    throw new Error('JWT_SECRET env var is required in production');
+  }
+  console.warn(
+    '[UserService] ⚠️  JWT_SECRET nie je nastavený — používa sa nezabezpečený DEV fallback. ' +
+    'V produkcii nastavte JWT_SECRET env premennú!'
+  );
+}
+
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || DEV_JWT_FALLBACK);
 
 // In-memory fallback keď MongoDB nie je dostupné
 const inMemoryUsers = new Map<string, UserDocument>();
@@ -64,16 +80,8 @@ export async function verifyToken(token: string): Promise<{ userId: string; type
       type: payload.type as string,
     };
   } catch {
-    // Fallback: skúsiť legacy Base64 formát (pre existujúce tokeny)
-    try {
-      const json = Buffer.from(token, 'base64').toString('utf-8');
-      const parsed = JSON.parse(json);
-      if (parsed.userId && parsed.exp && parsed.exp > Date.now()) {
-        return { userId: parsed.userId, type: parsed.type || 'access' };
-      }
-    } catch {
-      // Ani legacy formát nefunguje
-    }
+    // Bezpečnosť: akceptujeme VÝHRADNE podpísané JWT tokeny.
+    // Legacy nepodpísané base64 tokeny už nie sú akceptované.
     return null;
   }
 }

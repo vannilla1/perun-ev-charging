@@ -11,6 +11,13 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # KRITICKÉ: bez JWT_SECRET app v produkcii odmietne bootnúť (fail-closed).
+      # Predtým padla na verejne známy default secret = úplný auth bypass.
+      - key: JWT_SECRET
+        generateValue: true
+      # Voliteľné: admin kľúč pre zápisy do QR mappings (x-admin-key header)
+      - key: ADMIN_API_KEY
+        generateValue: true
       - key: NODE_OPTIONS
         value: "--max-old-space-size=460"
       - key: NEXT_PUBLIC_SMARTME_CLIENT_ID

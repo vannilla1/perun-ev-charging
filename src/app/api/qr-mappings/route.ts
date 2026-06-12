@@ -8,7 +8,28 @@ async function isAuthenticated(request: NextRequest): Promise<boolean> {
   return !!userId;
 }
 
-// GET /api/qr-mappings - Získať všetky mapovania alebo vyhľadať podľa serial
+/**
+ * Admin gate pre zápisy: PWA nemá role systém, takže mutácie mappings chráni
+ * server-side kľúč (x-admin-key == ADMIN_API_KEY env). Bez neho by hociktorý
+ * prihlásený driver vedel presmerovať QR kódy na inú stanicu.
+ */
+function checkAdminKey(request: NextRequest): NextResponse | null {
+  const configured = process.env.ADMIN_API_KEY;
+  if (!configured) {
+    return NextResponse.json(
+      { error: 'Admin API nie je nakonfigurované (ADMIN_API_KEY)' },
+      { status: 503 }
+    );
+  }
+  if (request.headers.get('x-admin-key') !== configured) {
+    return NextResponse.json({ error: 'Neplatný admin kľúč' }, { status: 403 });
+  }
+  return null;
+}
+
+// GET /api/qr-mappings - Vyhľadať podľa serial (verejné — QR scan flow beží aj
+// pred loginom a serial pozná každý, kto vidí vytlačený QR kód). Výpis VŠETKÝCH
+// mapovaní vyžaduje prihlásenie (full-dump bol verejný data leak).
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -29,7 +50,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(mapping);
     }
 
-    // Získať všetky mapovania
+    // Full list len pre prihlásených
+    if (!(await isAuthenticated(request))) {
+      return NextResponse.json({ error: 'Nie ste prihlásený' }, { status: 401 });
+    }
     const mappings = await collection.find({}).toArray();
     return NextResponse.json({ mappings });
   } catch (error) {
@@ -41,11 +65,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/qr-mappings - Pridať nové mapovanie (vyžaduje auth)
+// POST /api/qr-mappings - Pridať nové mapovanie (vyžaduje auth + admin kľúč)
 export async function POST(request: NextRequest) {
   if (!(await isAuthenticated(request))) {
     return NextResponse.json({ error: 'Nie ste prihlásený' }, { status: 401 });
   }
+  const adminError = checkAdminKey(request);
+  if (adminError) return adminError;
 
   try {
     const body = await request.json();
@@ -90,11 +116,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE /api/qr-mappings - Odstrániť mapovanie (vyžaduje auth)
+// DELETE /api/qr-mappings - Odstrániť mapovanie (vyžaduje auth + admin kľúč)
 export async function DELETE(request: NextRequest) {
   if (!(await isAuthenticated(request))) {
     return NextResponse.json({ error: 'Nie ste prihlásený' }, { status: 401 });
   }
+  const adminError = checkAdminKey(request);
+  if (adminError) return adminError;
 
   try {
     const { searchParams } = new URL(request.url);

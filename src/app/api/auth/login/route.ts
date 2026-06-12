@@ -9,6 +9,7 @@ import {
   linkEcarupAccount,
   updateUser,
 } from '@/lib/services/userService';
+import { encryptSecret } from '@/lib/services/secretVault';
 
 // Demo účty pre testovanie
 const DEMO_ACCOUNTS = [
@@ -83,10 +84,11 @@ export async function POST(request: NextRequest) {
         console.log(`[Login] Success from MongoDB: ${normalizedEmail}`);
         const userId = String(user._id || user.email);
 
-        // Aktualizujeme smartmeBasicAuth ak je eCarUp prepojený
+        // Aktualizujeme smartmeBasicAuth ak je eCarUp prepojený.
+        // Ukladáme ZAŠIFROVANÉ (AES-GCM) — base64 by bol reverzibilný plaintext hesla v DB.
         if (user.ecarupLinked && !user.smartmeBasicAuth) {
           const basicAuthToken = Buffer.from(`${normalizedEmail}:${password}`).toString('base64');
-          updateUser(normalizedEmail, { smartmeBasicAuth: basicAuthToken }).catch(() => {});
+          updateUser(normalizedEmail, { smartmeBasicAuth: encryptSecret(basicAuthToken) }).catch(() => {});
         }
 
         return NextResponse.json({
@@ -129,11 +131,11 @@ export async function POST(request: NextRequest) {
             password: password,
           });
 
-          // Prepojíme s eCarUp a uložíme Basic Auth pre smart-me API
+          // Prepojíme s eCarUp a uložíme Basic Auth pre smart-me API (zašifrované at-rest)
           const basicAuthToken = Buffer.from(`${normalizedEmail}:${password}`).toString('base64');
           await linkEcarupAccount(normalizedEmail, {
             customerId: ecarupUser.smartmeId,
-            smartmeBasicAuth: basicAuthToken,
+            smartmeBasicAuth: encryptSecret(basicAuthToken),
           });
 
           const userId = String(newUser._id || newUser.email);

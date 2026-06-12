@@ -179,15 +179,10 @@ export async function getSessionStatus(sessionId: string): Promise<SessionStatus
     return data;
   } catch (error) {
     console.error('getSessionStatus error:', error);
-    // Fallback na mock hodnoty ak API zlyhá
-    return {
-      sessionId,
-      status: 'active',
-      currentPower: 22 + Math.random() * 3 - 1.5,
-      energyDelivered: Math.random() * 30,
-      duration: Math.floor(Math.random() * 7200),
-      estimatedCost: Math.random() * 15,
-    };
+    // Žiadne vymyslené hodnoty pri výpadku API — sú to billing-relevantné čísla.
+    // Throw nechá react-query polling (useCharging) podržať posledný známy stav
+    // a skúsiť znova o 2s; UI tak nikdy neukazuje náhodné kW/€.
+    throw error;
   }
 }
 

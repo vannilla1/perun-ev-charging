@@ -5,35 +5,20 @@
 import { ObjectId } from 'mongodb';
 import { getDb, COLLECTIONS, UserDocument } from '../mongodb';
 import { verifyToken } from './userService';
+import { decryptSecret } from './secretVault';
 
 /**
- * Dekóduje a overí JWT token (podpísaný aj legacy base64)
+ * Dekóduje a overí podpísaný JWT token
  */
 export async function decodeToken(token: string): Promise<{ userId: string; type: string } | null> {
   return verifyToken(token);
 }
 
 /**
- * Synchronná verzia pre jednoduchú kontrolu (legacy fallback)
- * DEPRECATED — používať async decodeToken namiesto toho
+ * Načíta používateľský dokument pre prihláseného používateľa (podľa auth hlavičky).
+ * Vráti null ak token chýba, je neplatný, alebo používateľ neexistuje v DB.
  */
-export function decodeTokenSync(token: string): { userId: string; type: string; exp: number } | null {
-  try {
-    const json = Buffer.from(token, 'base64').toString('utf-8');
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Získa smart-me Basic Auth token z databázy pre prihláseného používateľa
- */
-export async function getSmartmeAuth(authHeader: string | null): Promise<{
-  basicAuth: string;
-  email: string;
-  userId: string;
-} | null> {
+export async function getAuthenticatedUser(authHeader: string | null): Promise<UserDocument | null> {
   if (!authHeader) return null;
 
   const token = authHeader.replace('Bearer ', '');
@@ -56,19 +41,35 @@ export async function getSmartmeAuth(authHeader: string | null): Promise<{
       // Nie je platné ObjectId, preskočiť
     }
 
-    const user = await db.collection<UserDocument>(COLLECTIONS.USERS).findOne({
+    return await db.collection<UserDocument>(COLLECTIONS.USERS).findOne({
       $or: orConditions,
     });
+  } catch (error) {
+    console.error('[AuthHelper] Error loading authenticated user:', error);
+    return null;
+  }
+}
 
-    if (!user?.smartmeBasicAuth) return null;
+/**
+ * Získa smart-me Basic Auth token z databázy pre prihláseného používateľa
+ */
+export async function getSmartmeAuth(authHeader: string | null): Promise<{
+  basicAuth: string;
+  email: string;
+  userId: string;
+} | null> {
+  const user = await getAuthenticatedUser(authHeader);
+  if (!user?.smartmeBasicAuth) return null;
 
+  try {
     return {
-      basicAuth: user.smartmeBasicAuth,
+      // Hodnota môže byť zašifrovaná (enc:v1:...) alebo legacy base64 — decryptSecret rieši oboje
+      basicAuth: decryptSecret(user.smartmeBasicAuth),
       email: user.email,
       userId: String(user._id || user.email),
     };
   } catch (error) {
-    console.error('[AuthHelper] Error getting smartme auth:', error);
+    console.error('[AuthHelper] Error decrypting smartme auth:', error);
     return null;
   }
 }

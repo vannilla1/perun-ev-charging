@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { requireAuth } from '@/lib/services/authHelper';
+import { getAuthenticatedUser } from '@/lib/services/authHelper';
+import { paymentIntentBelongsToUser } from '@/lib/services/stripeCustomer';
 
 // Stripe is optional - only initialize if key is provided
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -11,11 +12,12 @@ const stripe = process.env.STRIPE_SECRET_KEY
 // Capture skutočnej sumy po ukončení nabíjania
 export async function POST(request: NextRequest) {
   try {
-    // Auth kontrola
-    const userId = await requireAuth(request.headers.get('authorization'));
-    if (!userId) {
+    // Auth kontrola — potrebujeme celý user dokument pre ownership check
+    const user = await getAuthenticatedUser(request.headers.get('authorization'));
+    if (!user) {
       return NextResponse.json({ error: 'Nie ste prihlásený' }, { status: 401 });
     }
+    const userId = String(user._id || user.email);
 
     if (!stripe) {
       return NextResponse.json(
@@ -50,6 +52,14 @@ export async function POST(request: NextRequest) {
     // Získame PaymentIntent pre overenie
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
+    // Ownership: capture len na vlastných PaymentIntentoch
+    if (!(await paymentIntentBelongsToUser(stripe, paymentIntent, userId, user))) {
+      return NextResponse.json(
+        { error: 'PaymentIntent nepatrí prihlásenému používateľovi' },
+        { status: 403 }
+      );
+    }
+
     if (paymentIntent.status !== 'requires_capture') {
       return NextResponse.json(
         {
@@ -60,8 +70,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Konverzia EUR na centy
-    const amountToCapture = Math.round(actualAmount * 100);
+    // Konverzia EUR na centy + server-side clamp: nikdy viac než predautorizácia
+    // a nikdy nezmyselná hodnota (klient môže poslať čokoľvek).
+    const amountToCapture = Math.min(
+      Math.round(actualAmount * 100),
+      paymentIntent.amount
+    );
+    if (!Number.isFinite(amountToCapture) || amountToCapture <= 0) {
+      return NextResponse.json(
+        { error: 'Neplatná suma na capture' },
+        { status: 400 }
+      );
+    }
 
     // Capture skutočnej sumy (môže byť menej ako predautorizácia)
     const capturedIntent = await stripe.paymentIntents.capture(

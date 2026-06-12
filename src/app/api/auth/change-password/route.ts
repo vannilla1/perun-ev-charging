@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import { decodeToken } from '@/lib/services/authHelper';
 import { getDb, COLLECTIONS, UserDocument } from '@/lib/mongodb';
 import { hashPassword, comparePassword } from '@/lib/services/userService';
+import { encryptSecret } from '@/lib/services/secretVault';
 
 export async function POST(request: NextRequest) {
   try {
@@ -62,7 +63,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nesprávne aktuálne heslo' }, { status: 401 });
     }
 
-    // Zmeň heslo v DB (vždy bcrypt)
+    // Zmeň heslo v DB (vždy bcrypt). Basic auth ukladáme ZAŠIFROVANÉ (AES-GCM) —
+    // base64 by bol reverzibilný plaintext hesla v DB.
     const newHash = await hashPassword(newPassword);
     const newBasicAuth = Buffer.from(`${user.email}:${newPassword}`).toString('base64');
 
@@ -71,7 +73,7 @@ export async function POST(request: NextRequest) {
       {
         $set: {
           passwordHash: newHash,
-          smartmeBasicAuth: newBasicAuth,
+          smartmeBasicAuth: encryptSecret(newBasicAuth),
           updatedAt: new Date(),
         },
       }
