@@ -1,0 +1,18 @@
+{
+  "scanQr": "Naskenujte QR kód",
+  "scanInstructions": "Namierte kameru na QR kód nabíjacej stanice",
+  "orEnterCode": "Alebo zadajte kód manuálne",
+  "enterCode": "Zadajte kód stanice",
+  "startCharging": "Spustiť nabíjanie",
+  "stopCharging": "Zastaviť nabíjanie",
+  "chargingInProgress": "Prebieha nabíjanie",
+  "chargingComplete": "Nabíjanie dokončené",
+  "currentPower": "Aktuálny výkon",
+  "energyDelivered": "Dodaná energia",
+  "duration": "Trvanie",
+  "estimatedCost": "Odhadovaná cena",
+  "finalCost": "Celková cena",
+  "connectCable": "Pripojte kábel",
+  "waitingForVehicle": "Čakám na vozidlo",
+  "preparingSession": "Pripravujem reláciu"
+}

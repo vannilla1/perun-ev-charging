@@ -1,0 +1,21 @@
+{
+  "available": "Dostupná",
+  "occupied": "Obsadená",
+  "offline": "Offline",
+  "maintenance": "Údržba",
+  "pricePerKwh": "€/kWh",
+  "power": "kW",
+  "distance": "km",
+  "connectors": "Konektory",
+  "openNow": "Otvorené",
+  "closed": "Zatvorené",
+  "navigate": "Navigovať",
+  "startCharging": "Spustiť nabíjanie",
+  "details": "Detail stanice",
+  "nearbyStations": "Nabíjacie stanice v okolí",
+  "searchPlaceholder": "Hľadať stanicu alebo adresu...",
+  "noStationsFound": "Žiadne stanice nenájdené",
+  "filters": "Filtre",
+  "applyFilters": "Použiť filtre",
+  "clearFilters": "Zrušiť filtre"
+}

@@ -1,0 +1,21 @@
+{
+  "loading": "Načítavam...",
+  "error": "Chyba",
+  "retry": "Skúsiť znova",
+  "cancel": "Zrušiť",
+  "confirm": "Potvrdiť",
+  "save": "Uložiť",
+  "delete": "Zmazať",
+  "edit": "Upraviť",
+  "back": "Späť",
+  "next": "Ďalej",
+  "close": "Zavrieť",
+  "search": "Hľadať",
+  "noResults": "Žiadne výsledky",
+  "seeAll": "Zobraziť všetko",
+  "refresh": "Obnoviť",
+  "language": {
+    "label": "Jazyk",
+    "change": "Zmeniť jazyk"
+  }
+}

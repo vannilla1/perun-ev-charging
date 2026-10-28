@@ -1,0 +1,14 @@
+{
+  "title": "História nabíjaní",
+  "totalEnergy": "Celková energia",
+  "totalCost": "Celkové náklady",
+  "totalSessions": "Počet nabíjaní",
+  "noHistory": "Zatiaľ žiadna história",
+  "noHistoryDescription": "Tu uvidíte prehľad vašich nabíjaní",
+  "sessionDetails": "Detail relácie",
+  "downloadInvoice": "Stiahnuť faktúru",
+  "filterByDate": "Filtrovať podľa dátumu",
+  "thisMonth": "Tento mesiac",
+  "lastMonth": "Minulý mesiac",
+  "allTime": "Celé obdobie"
+}

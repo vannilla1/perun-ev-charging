@@ -1,0 +1,10 @@
+{
+  "networkError": "Chyba siete. Skontrolujte pripojenie.",
+  "serverError": "Chyba servera. Skúste neskôr.",
+  "unauthorized": "Neautorizovaný prístup. Prihláste sa znova.",
+  "notFound": "Nenájdené",
+  "invalidCode": "Neplatný kód stanice",
+  "chargingFailed": "Nepodarilo sa spustiť nabíjanie",
+  "paymentFailed": "Platba zlyhala",
+  "sessionExpired": "Relácia vypršala"
+}
