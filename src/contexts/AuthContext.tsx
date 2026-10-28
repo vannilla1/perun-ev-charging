@@ -8,6 +8,8 @@ import type { User } from '@/types';
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  /** Prihlásenie už bolo načítané z localStorage (po hydratácii). */
+  isReady: boolean;
   isLoggedIn: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
@@ -86,7 +88,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value: AuthContextType = {
     user,
-    isLoading: isLoading || !isInitialized,
+    isLoading,
+    isReady: isInitialized,
     isLoggedIn: !!user,
     login,
     register,

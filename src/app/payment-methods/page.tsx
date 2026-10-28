@@ -43,7 +43,7 @@ const CreditCardIcon = () => (
 export default function PaymentMethodsPage() {
   const t = useTranslations('payment');
   const router = useRouter();
-  const { isLoggedIn, isLoading: authLoading } = useAuth();
+  const { isLoggedIn, isLoading: authLoading, isReady } = useAuth();
 
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,10 +51,10 @@ export default function PaymentMethodsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !isLoggedIn) {
+    if (isReady && !authLoading && !isLoggedIn) {
       router.push('/login');
     }
-  }, [authLoading, isLoggedIn, router]);
+  }, [isReady, authLoading, isLoggedIn, router]);
 
   useEffect(() => {
     loadPaymentMethods();
@@ -108,7 +108,7 @@ export default function PaymentMethodsPage() {
     loadPaymentMethods();
   };
 
-  if (authLoading || !isLoggedIn) {
+  if (!isReady || authLoading || !isLoggedIn) {
     return (
       <AppLayout header={<PageHeader title={t('title')} showBack />}>
         <div className="flex items-center justify-center h-64">

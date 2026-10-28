@@ -60,7 +60,7 @@ export default function ProfilePage() {
   const t = useTranslations('profile');
   const format = useFormatter();
   const router = useRouter();
-  const { user, isLoggedIn, isLoading, logout } = useAuth();
+  const { user, isLoggedIn, isLoading, isReady, logout } = useAuth();
 
   const handleLogout = () => {
     logout();
@@ -76,7 +76,7 @@ export default function ProfilePage() {
     : { totalCharges: 0, totalEnergy: 0, totalSpent: 0 };
 
   // Loading stav počas inicializácie autentifikácie
-  if (isLoading) {
+  if (!isReady || isLoading) {
     return (
       <AppLayout
         header={

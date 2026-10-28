@@ -11,7 +11,7 @@ export default function ChangePasswordPage() {
   const t = useTranslations('settings.changePassword');
   const tCommon = useTranslations('common');
   const router = useRouter();
-  const { isLoggedIn, isLoading: authLoading } = useAuth();
+  const { isLoggedIn, isReady } = useAuth();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -23,8 +23,8 @@ export default function ChangePasswordPage() {
 
   // Presmerovanie ak nie je prihlásený
   useEffect(() => {
-    if (!authLoading && !isLoggedIn) router.push('/login');
-  }, [authLoading, isLoggedIn, router]);
+    if (isReady && !isLoggedIn) router.push('/login');
+  }, [isReady, isLoggedIn, router]);
 
   if (!isLoggedIn) {
     return null;

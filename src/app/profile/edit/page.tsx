@@ -4,10 +4,23 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AppLayout, PageHeader } from '@/components/Layout';
-import { Card, CardContent, Button } from '@/components/Common';
+import { Card, CardContent, Button, Loading } from '@/components/Common';
 import { useAuth } from '@/contexts';
 
 export default function EditProfilePage() {
+  const { user, isReady } = useAuth();
+  // Polia sa predvyplnia z používateľa — formulár až keď je načítaný z localStorage
+  if (!isReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loading />
+      </div>
+    );
+  }
+  return <EditProfileForm key={user?.id ?? 'anon'} />;
+}
+
+function EditProfileForm() {
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
   const tErrors = useTranslations('errors');
