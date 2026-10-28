@@ -8,5 +8,10 @@
   "paymentFailed": "Platba zlyhala",
   "sessionExpired": "Relácia vypršala",
   "unknown": "Nastala neočakávaná chyba",
-  "saveFailed": "Nepodarilo sa uložiť zmeny"
+  "saveFailed": "Nepodarilo sa uložiť zmeny",
+  "notFoundPage": {
+    "title": "Stránka neexistuje",
+    "description": "Adresa je nesprávna alebo stránka bola presunutá.",
+    "home": "Späť na mapu staníc"
+  }
 }

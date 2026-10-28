@@ -8,5 +8,10 @@
   "paymentFailed": "Payment failed",
   "sessionExpired": "Session expired",
   "unknown": "Something went wrong",
-  "saveFailed": "Couldn't save changes"
+  "saveFailed": "Couldn't save changes",
+  "notFoundPage": {
+    "title": "Page not found",
+    "description": "The address is wrong or the page has moved.",
+    "home": "Back to the station map"
+  }
 }
