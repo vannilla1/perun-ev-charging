@@ -6,19 +6,16 @@ import type { Locale } from '@/i18n/config';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe, Stripe, StripeError } from '@stripe/stripe-js';
 
-// Lazy load Stripe
-let stripePromise: Promise<Stripe | null> | null = null;
+// Lazy load Stripe — jedna inštancia na jazyk, aby texty Stripe nasledovali prepínač jazyka
+const stripePromises: Partial<Record<Locale, Promise<Stripe | null>>> = {};
 
 const getStripe = (locale: Locale) => {
-  if (!stripePromise) {
-    const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-    if (!publishableKey) {
-      console.error('Stripe publishable key is not set');
-      return null;
-    }
-    stripePromise = loadStripe(publishableKey, { locale });
+  const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  if (!publishableKey) {
+    console.error('Stripe publishable key is not set');
+    return null;
   }
-  return stripePromise;
+  return (stripePromises[locale] ??= loadStripe(publishableKey, { locale }));
 };
 
 export const stripeErrorMessage = (error: StripeError, fallback: string): string =>
