@@ -1,10 +1,12 @@
 {
-  "networkError": "Chyba siete. Skontrolujte pripojenie.",
-  "serverError": "Chyba servera. Skúste neskôr.",
-  "unauthorized": "Neautorizovaný prístup. Prihláste sa znova.",
-  "notFound": "Nenájdené",
-  "invalidCode": "Neplatný kód stanice",
-  "chargingFailed": "Nepodarilo sa spustiť nabíjanie",
-  "paymentFailed": "Platba zlyhala",
-  "sessionExpired": "Relácia vypršala"
+  "networkError": "Network error. Check your connection.",
+  "serverError": "Server error. Please try again later.",
+  "unauthorized": "Unauthorized. Please sign in again.",
+  "notFound": "Not found",
+  "invalidCode": "Invalid station code",
+  "chargingFailed": "Couldn't start charging",
+  "paymentFailed": "Payment failed",
+  "sessionExpired": "Session expired",
+  "unknown": "Something went wrong",
+  "saveFailed": "Couldn't save changes"
 }

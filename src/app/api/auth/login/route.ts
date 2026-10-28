@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 import {
   verifyPassword,
   findUserByEmail,
@@ -43,13 +44,14 @@ const DEMO_ACCOUNTS = [
 
 // POST /api/auth/login
 export async function POST(request: NextRequest) {
+  const t = await getTranslations('api');
   try {
     const body = await request.json();
     const { email, password } = body;
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: 'Email a heslo sú povinné' },
+        { error: t('auth.credentialsRequired') },
         { status: 400 }
       );
     }
@@ -107,7 +109,7 @@ export async function POST(request: NextRequest) {
       if (existingUser) {
         console.log(`[Login] User found in MongoDB but password mismatch: ${normalizedEmail}`);
         return NextResponse.json(
-          { error: 'Nesprávne heslo' },
+          { error: t('auth.wrongPassword') },
           { status: 401 }
         );
       }
@@ -176,13 +178,13 @@ export async function POST(request: NextRequest) {
 
     // Neúspešné prihlásenie
     return NextResponse.json(
-      { error: 'Nesprávny email alebo heslo' },
+      { error: t('auth.invalidCredentials') },
       { status: 401 }
     );
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
-      { error: 'Interná chyba servera' },
+      { error: t('common.internalError') },
       { status: 500 }
     );
   }

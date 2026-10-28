@@ -59,7 +59,7 @@ export function useServiceWorker() {
         setState((prev) => ({
           ...prev,
           isLoading: false,
-          error: error instanceof Error ? error.message : 'Neznáma chyba',
+          error: error instanceof Error ? error.message : String(error),
         }));
       }
     }

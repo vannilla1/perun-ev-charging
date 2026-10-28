@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { getStations, getNearbyStations, getStationById, filterStations } from '@/services/api/stationService';
 import { useAuth } from '@/contexts';
 import type { StationFilters } from '@/types';
@@ -53,12 +54,13 @@ export function useStation(id: string | null) {
 
 // Hook pre geolokáciu používateľa
 export function useUserLocation() {
+  const t = useTranslations('map');
   return useQuery({
     queryKey: ['userLocation'],
     queryFn: () =>
       new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
         if (!navigator.geolocation) {
-          reject(new Error('Geolokácia nie je podporovaná'));
+          reject(new Error(t('geolocationUnsupported')));
           return;
         }
 

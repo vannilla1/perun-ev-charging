@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 
 // POST /api/auth/refresh
 // Obnovenie access tokenu pomocou refresh tokenu
 export async function POST(request: NextRequest) {
+  const t = await getTranslations('api');
   try {
     const body = await request.json();
     const { refreshToken } = body;
 
     if (!refreshToken) {
       return NextResponse.json(
-        { error: 'Refresh token je povinný' },
+        { error: t('auth.refreshTokenRequired') },
         { status: 400 }
       );
     }
@@ -34,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     if (!tokenResponse.ok) {
       return NextResponse.json(
-        { error: 'Token expiroval, prihláste sa znova' },
+        { error: t('auth.sessionExpired') },
         { status: 401 }
       );
     }
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Token refresh error:', error);
     return NextResponse.json(
-      { error: 'Interná chyba servera' },
+      { error: t('common.internalError') },
       { status: 500 }
     );
   }

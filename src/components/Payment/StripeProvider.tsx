@@ -1,23 +1,28 @@
 'use client';
 
 import React from 'react';
+import { useLocale, useTranslations } from 'next-intl';
+import type { Locale } from '@/i18n/config';
 import { Elements } from '@stripe/react-stripe-js';
-import { loadStripe, Stripe } from '@stripe/stripe-js';
+import { loadStripe, Stripe, StripeError } from '@stripe/stripe-js';
 
 // Lazy load Stripe
 let stripePromise: Promise<Stripe | null> | null = null;
 
-const getStripe = () => {
+const getStripe = (locale: Locale) => {
   if (!stripePromise) {
     const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
     if (!publishableKey) {
       console.error('Stripe publishable key is not set');
       return null;
     }
-    stripePromise = loadStripe(publishableKey);
+    stripePromise = loadStripe(publishableKey, { locale });
   }
   return stripePromise;
 };
+
+export const stripeErrorMessage = (error: StripeError, fallback: string): string =>
+  (error.type === 'card_error' || error.type === 'validation_error') && error.message ? error.message : fallback;
 
 interface StripeProviderProps {
   children: React.ReactNode;
@@ -25,13 +30,15 @@ interface StripeProviderProps {
 }
 
 export function StripeProvider({ children, clientSecret }: StripeProviderProps) {
-  const stripe = getStripe();
+  const t = useTranslations('payment');
+  const locale = useLocale();
+  const stripe = getStripe(locale);
 
   if (!stripe) {
     return (
       <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
         <p className="text-sm text-yellow-700">
-          Platobný systém nie je nakonfigurovaný. Kontaktujte podporu.
+          {t('notConfigured')}
         </p>
       </div>
     );
@@ -40,6 +47,7 @@ export function StripeProvider({ children, clientSecret }: StripeProviderProps) 
   const options = clientSecret
     ? {
         clientSecret,
+        locale,
         appearance: {
           theme: 'stripe' as const,
           variables: {
@@ -50,7 +58,7 @@ export function StripeProvider({ children, clientSecret }: StripeProviderProps) 
           },
         },
       }
-    : {};
+    : { locale };
 
   return (
     <Elements stripe={stripe} options={options}>

@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { paymentService, PaymentIntent } from '@/services/api/paymentService';
 
 // Hook pre správu platobných metód
@@ -56,6 +57,7 @@ export function usePaymentMethods() {
 
 // Hook pre platobný proces
 export function usePaymentProcess() {
+  const t = useTranslations('payment');
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntent | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,17 +71,17 @@ export function usePaymentProcess() {
       setPaymentIntent(intent);
       return intent;
     } catch (err) {
-      setError('Nepodarilo sa vytvoriť platbu');
+      setError(t('errors.createFailed'));
       throw err;
     } finally {
       setIsProcessing(false);
     }
-  }, []);
+  }, [t]);
 
   const confirmPayment = useCallback(
     async (paymentMethodId: string) => {
       if (!paymentIntent) {
-        throw new Error('Platba nie je inicializovaná');
+        throw new Error(t('errors.notInitialized'));
       }
 
       setIsProcessing(true);
@@ -90,13 +92,13 @@ export function usePaymentProcess() {
         setPaymentIntent(result);
         return result;
       } catch (err) {
-        setError('Platba zlyhala');
+        setError(t('errors.failed'));
         throw err;
       } finally {
         setIsProcessing(false);
       }
     },
-    [paymentIntent]
+    [paymentIntent, t]
   );
 
   const reset = useCallback(() => {
@@ -138,6 +140,7 @@ export function useTransactions(limit = 20) {
 
 // Hook pre validáciu karty
 export function useCardValidation() {
+  const t = useTranslations('payment');
   const [cardNumber, setCardNumber] = useState('');
   const [expiryMonth, setExpiryMonth] = useState('');
   const [expiryYear, setExpiryYear] = useState('');
@@ -154,22 +157,22 @@ export function useCardValidation() {
 
     const cleanedNumber = cardNumber.replace(/\s/g, '');
     if (!paymentService.validateCardNumber(cleanedNumber)) {
-      newErrors.cardNumber = 'Neplatné číslo karty';
+      newErrors.cardNumber = t('validation.cardNumber');
     }
 
     const month = parseInt(expiryMonth, 10);
     const year = parseInt(expiryYear, 10);
     if (!paymentService.validateExpiry(month, year)) {
-      newErrors.expiry = 'Neplatná platnosť';
+      newErrors.expiry = t('validation.expiry');
     }
 
     if (!paymentService.validateCVC(cvc)) {
-      newErrors.cvc = 'Neplatný CVC';
+      newErrors.cvc = t('validation.cvc');
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [cardNumber, expiryMonth, expiryYear, cvc]);
+  }, [cardNumber, expiryMonth, expiryYear, cvc, t]);
 
   const reset = useCallback(() => {
     setCardNumber('');

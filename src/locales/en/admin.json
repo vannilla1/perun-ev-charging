@@ -1,1 +1,35 @@
-{}
+{
+  "qrMappings": {
+    "title": "QR mappings – Admin",
+    "loadError": "Couldn't load data",
+    "required": "Serial and station ID are required",
+    "saveError": "Couldn't save",
+    "saved": "Mapping saved",
+    "confirmDelete": "Are you sure you want to remove this mapping?",
+    "deleteError": "Couldn't remove",
+    "deleted": "Mapping removed",
+    "form": {
+      "title": "Add new mapping",
+      "serial": "Serial from QR code (or full URL)",
+      "serialPlaceholder": "IBQqDLHD3m4KVBPAD4ed4Nyr3z or https://www.ecarup.com/app/?serial=...",
+      "station": "Station",
+      "selectStation": "-- Select a station --",
+      "stationName": "Station name (optional)",
+      "submit": "Add mapping"
+    },
+    "list": {
+      "title": "Existing mappings ({count})",
+      "empty": "No mappings",
+      "serial": "Serial",
+      "stationId": "Station ID",
+      "name": "Name",
+      "actions": "Actions",
+      "delete": "Remove"
+    },
+    "stations": {
+      "title": "Available stations ({count})",
+      "id": "ID: {id}",
+      "serial": "Serial no.: {serial}"
+    }
+  }
+}

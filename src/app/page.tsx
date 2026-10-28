@@ -3,11 +3,16 @@
 import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useFormatter } from 'next-intl';
 import { AppLayout } from '@/components/Layout';
 import { useStations } from '@/hooks';
 import { SearchIcon, FilterIcon, CloseIcon, NavigateIcon, BoltIcon } from '@/components/Common';
 import type { ChargingStation, StationFilters } from '@/types';
+
+function MapLoadingText() {
+  const t = useTranslations('map');
+  return <p className="text-base text-[var(--text-secondary)]">{t('loadingMap')}</p>;
+}
 
 // Dynamický import pre Leaflet (SSR disabled)
 const StationMap = dynamic(
@@ -37,7 +42,7 @@ const StationMap = dynamic(
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <p className="text-base text-[var(--text-secondary)]">Načítavam mapu...</p>
+          <MapLoadingText />
         </div>
       </div>
     ),
@@ -46,6 +51,17 @@ const StationMap = dynamic(
 
 export default function MapPage() {
   const t = useTranslations('station');
+  const tm = useTranslations('map');
+  const tc = useTranslations('common');
+  const format = useFormatter();
+  // Mena menším písmom, ale na mieste podľa jazyka ("0,35 €" / "€0.35")
+  const price = (value: number) =>
+    format
+      .number(value, { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      .split('€')
+      .flatMap((part, i) =>
+        i === 0 ? [part] : [<span key={i} className="text-sm sm:text-base font-normal">€</span>, part],
+      );
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStation, setSelectedStation] = useState<ChargingStation | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -82,7 +98,7 @@ export default function MapPage() {
         icon: '⚡'
       },
       offline: {
-        text: 'Nedostupná',
+        text: t('offline'),
         bg: 'bg-gray-400',
         textColor: 'text-white',
         icon: '✕'
@@ -146,8 +162,8 @@ export default function MapPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
-                <p className="text-lg font-medium text-[var(--text-primary)]" style={{ marginBottom: '4px' }}>Načítavam stanice</p>
-                <p className="text-sm text-[var(--text-secondary)]">Prosím počkajte...</p>
+                <p className="text-lg font-medium text-[var(--text-primary)]" style={{ marginBottom: '4px' }}>{tm('loadingStations')}</p>
+                <p className="text-sm text-[var(--text-secondary)]">{tm('pleaseWait')}</p>
               </div>
             </div>
           ) : error ? (
@@ -158,12 +174,12 @@ export default function MapPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
-                <p className="text-base sm:text-lg font-medium text-[var(--text-primary)] mb-2">Nepodarilo sa načítať stanice</p>
+                <p className="text-base sm:text-lg font-medium text-[var(--text-primary)] mb-2">{tm('loadError')}</p>
                 <button
                   onClick={() => window.location.reload()}
                   className="btn-premium btn-primary text-sm sm:text-base px-4 py-2"
                 >
-                  Skúsiť znova
+                  {tc('retry')}
                 </button>
               </div>
             </div>
@@ -184,7 +200,8 @@ export default function MapPage() {
               </div>
               <input
                 type="text"
-                placeholder="Hľadať nabíjaciu stanicu..."
+                placeholder={t('searchPlaceholder')}
+                aria-label={t('searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3.5 bg-white/95 backdrop-blur-md border border-white/50 rounded-xl sm:rounded-2xl shadow-lg text-sm sm:text-base text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--perun-blue)] focus:border-transparent transition-all"
@@ -192,6 +209,8 @@ export default function MapPage() {
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
+              aria-label={tm('toggleFilters')}
+              aria-expanded={showFilters}
               className={`p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl shadow-lg transition-all backdrop-blur-md border border-white/50 ${
                 showFilters || filters.onlyAvailable
                   ? 'bg-gradient-to-br from-[var(--perun-blue)] to-[var(--perun-blue-dark)] text-white'
@@ -207,9 +226,10 @@ export default function MapPage() {
             <div className="mt-2 sm:mt-3 bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-lg border border-white/50 overflow-hidden animate-slide-up pointer-events-auto">
               <div className="p-3 sm:p-4">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h3 className="font-semibold text-sm sm:text-base text-[var(--text-primary)]">Filtre</h3>
+                  <h3 className="font-semibold text-sm sm:text-base text-[var(--text-primary)]">{t('filters')}</h3>
                   <button
                     onClick={() => setShowFilters(false)}
+                    aria-label={tc('close')}
                     className="p-1 rounded-lg hover:bg-[var(--surface-secondary)] text-[var(--text-muted)]"
                   >
                     <CloseIcon />
@@ -225,7 +245,7 @@ export default function MapPage() {
                     />
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[var(--perun-green)]" />
-                      <span className="text-sm sm:text-base font-medium">Len dostupné stanice</span>
+                      <span className="text-sm sm:text-base font-medium">{tm('onlyAvailable')}</span>
                     </div>
                   </label>
                 </div>
@@ -234,13 +254,13 @@ export default function MapPage() {
                     onClick={() => setFilters({})}
                     className="flex-1 py-2 sm:py-3 border-2 border-[var(--border)] rounded-lg sm:rounded-xl text-sm sm:text-base font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)] transition-colors"
                   >
-                    Vymazať
+                    {tm('clear')}
                   </button>
                   <button
                     onClick={() => setShowFilters(false)}
                     className="flex-1 py-2 sm:py-3 bg-gradient-to-r from-[var(--perun-blue)] to-[var(--perun-blue-dark)] text-white rounded-lg sm:rounded-xl text-sm sm:text-base font-medium shadow-md hover:shadow-lg transition-all"
                   >
-                    Použiť
+                    {tm('apply')}
                   </button>
                 </div>
               </div>
@@ -261,12 +281,12 @@ export default function MapPage() {
                   <div className="flex-1 mr-2 sm:mr-4">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-bold text-base sm:text-xl text-[var(--text-primary)] line-clamp-2">
-                        {selectedStation.name}
+                        {selectedStation.name || t('unnamed')}
                       </h3>
                     </div>
                     <p className="text-xs sm:text-sm text-[var(--text-secondary)] flex items-center gap-1 line-clamp-1">
                       <NavigateIcon />
-                      <span className="truncate">{selectedStation.address}</span>
+                      <span className="truncate">{selectedStation.address || t('addressFallback')}</span>
                     </p>
                     {selectedStation.operator && (
                       <p className="text-xs text-[var(--text-muted)] mt-1 flex items-center gap-1">
@@ -281,6 +301,7 @@ export default function MapPage() {
                     </span>
                     <button
                       onClick={() => setSelectedStation(null)}
+                      aria-label={tc('close')}
                       className="p-1 sm:p-1.5 rounded-full hover:bg-[var(--surface-secondary)] text-[var(--text-muted)] transition-colors"
                     >
                       <CloseIcon />
@@ -305,11 +326,13 @@ export default function MapPage() {
                         connector.status === 'available' ? 'bg-[var(--perun-green)]' :
                         connector.status === 'offline' ? 'bg-gray-400' : 'bg-[var(--perun-orange)]'
                       }`} />
-                      {(connector as { name?: string }).name && (
-                        <span className="font-semibold hidden xs:inline">{(connector as { name?: string }).name}</span>
+                      {(connector as { side?: 'left' | 'right' }).side && (
+                        <span className="font-semibold hidden xs:inline">
+                          {t(`connectorSide.${(connector as { side?: 'left' | 'right' }).side!}`)}
+                        </span>
                       )}
                       <span>{connector.type}</span>
-                      <span className="font-bold">{connector.power} kW</span>
+                      <span className="font-bold">{format.number(connector.power)} kW</span>
                     </div>
                   ))}
                 </div>
@@ -319,21 +342,26 @@ export default function MapPage() {
                   <div>
                     {selectedStation.userPricePerKwh != null ? (
                       <>
-                        <p className="text-[10px] sm:text-xs text-[var(--text-muted)] mb-0.5">Vaša cena za kWh</p>
+                        <p className="text-[10px] sm:text-xs text-[var(--text-muted)] mb-0.5">{tm('yourPricePerKwh')}</p>
                         <p className="text-xl sm:text-2xl font-bold text-[var(--perun-green)]">
-                          {selectedStation.userPricePerKwh.toFixed(2)} <span className="text-sm sm:text-base font-normal">€</span>
+                          {price(selectedStation.userPricePerKwh)}
                         </p>
                         <p className="text-[10px] sm:text-xs text-[var(--text-muted)] mt-1">
-                          Verejná cena: {selectedStation.pricePerKwh > 0 ? `${selectedStation.pricePerKwh.toFixed(2)} €` : '0,00 €'}
+                          {tm('publicPrice', {
+                            price: format.number(selectedStation.pricePerKwh > 0 ? selectedStation.pricePerKwh : 0, {
+                              style: 'currency',
+                              currency: 'EUR',
+                            }),
+                          })}
                         </p>
                       </>
                     ) : (
                       <>
-                        <p className="text-[10px] sm:text-xs text-[var(--text-muted)] mb-0.5">Cena za kWh</p>
+                        <p className="text-[10px] sm:text-xs text-[var(--text-muted)] mb-0.5">{tm('pricePerKwh')}</p>
                         <p className="text-xl sm:text-2xl font-bold text-[var(--perun-blue)]">
                           {selectedStation.pricePerKwh > 0
-                            ? <>{selectedStation.pricePerKwh.toFixed(2)} <span className="text-sm sm:text-base font-normal">€</span></>
-                            : 'Zadarmo'}
+                            ? price(selectedStation.pricePerKwh)
+                            : tm('free')}
                         </p>
                       </>
                     )}
@@ -347,8 +375,8 @@ export default function MapPage() {
                       }}
                     >
                       <NavigateIcon />
-                      <span className="hidden sm:inline">Navigovať</span>
-                      <span className="sm:hidden">Nav</span>
+                      <span className="hidden sm:inline">{t('navigate')}</span>
+                      <span className="sm:hidden">{tm('navigateShort')}</span>
                     </button>
                     <button
                       className="flex-1 xs:flex-initial flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 sm:py-3 bg-gradient-to-r from-[var(--perun-green)] to-[var(--perun-green-dark)] text-white rounded-lg sm:rounded-xl text-xs sm:text-base font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
@@ -358,7 +386,7 @@ export default function MapPage() {
                       }}
                     >
                       <BoltIcon />
-                      Nabíjať
+                      {tm('charge')}
                     </button>
                   </div>
                 </div>

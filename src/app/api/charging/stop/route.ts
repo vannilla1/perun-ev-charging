@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 import { getSmartmeAuth } from '@/lib/services/authHelper';
 import {
   getPicoChargingData,
@@ -9,12 +10,13 @@ import {
 
 // POST /api/charging/stop
 export async function POST(request: NextRequest) {
+  const t = await getTranslations('api');
   try {
     const body = await request.json();
     const { sessionId } = body;
 
     if (!sessionId) {
-      return NextResponse.json({ error: 'ID relácie je povinné' }, { status: 400 });
+      return NextResponse.json({ error: t('common.sessionIdRequired') }, { status: 400 });
     }
 
     // 1. Ak je to Pico session, zastavíme cez smart-me API
@@ -56,13 +58,13 @@ export async function POST(request: NextRequest) {
               cost: 0, // 0€ pre špeciálnych používateľov
               pricePerKwh: 0,
             },
-            message: 'Nabíjanie bolo úspešne ukončené',
+            message: t('charging.stopped'),
             source: 'smartme_pico',
           });
         } catch (smartmeError) {
           console.error('[Charging Stop] Smart-me API error:', smartmeError);
           return NextResponse.json({
-            error: 'Nepodarilo sa zastaviť nabíjanie cez smart-me API',
+            error: t('charging.stopFailedSmartme'),
             details: smartmeError instanceof Error ? smartmeError.message : 'Unknown error',
           }, { status: 500 });
         }
@@ -81,11 +83,11 @@ export async function POST(request: NextRequest) {
         cost: 0,
         pricePerKwh: 0,
       },
-      message: 'Nabíjanie bolo ukončené',
+      message: t('charging.ended'),
       source: 'simulation',
     });
   } catch (error) {
     console.error('Stop charging error:', error);
-    return NextResponse.json({ error: 'Nepodarilo sa zastaviť nabíjanie' }, { status: 500 });
+    return NextResponse.json({ error: t('charging.stopFailed') }, { status: 500 });
   }
 }

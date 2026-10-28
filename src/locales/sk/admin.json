@@ -1,1 +1,35 @@
-{}
+{
+  "qrMappings": {
+    "title": "QR mapovania – Admin",
+    "loadError": "Chyba pri načítaní údajov",
+    "required": "Sériové číslo a ID stanice sú povinné",
+    "saveError": "Chyba pri ukladaní",
+    "saved": "Mapovanie bolo uložené",
+    "confirmDelete": "Naozaj chcete odstrániť toto mapovanie?",
+    "deleteError": "Chyba pri odstraňovaní",
+    "deleted": "Mapovanie bolo odstránené",
+    "form": {
+      "title": "Pridať nové mapovanie",
+      "serial": "Sériové číslo z QR kódu (alebo celá URL)",
+      "serialPlaceholder": "IBQqDLHD3m4KVBPAD4ed4Nyr3z alebo https://www.ecarup.com/app/?serial=...",
+      "station": "Stanica",
+      "selectStation": "-- Vyberte stanicu --",
+      "stationName": "Názov stanice (voliteľné)",
+      "submit": "Pridať mapovanie"
+    },
+    "list": {
+      "title": "Existujúce mapovania ({count})",
+      "empty": "Žiadne mapovania",
+      "serial": "Sériové číslo",
+      "stationId": "ID stanice",
+      "name": "Názov",
+      "actions": "Akcie",
+      "delete": "Odstrániť"
+    },
+    "stations": {
+      "title": "Dostupné stanice ({count})",
+      "id": "ID: {id}",
+      "serial": "Sériové č.: {serial}"
+    }
+  }
+}

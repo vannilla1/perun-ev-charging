@@ -6,5 +6,7 @@
   "invalidCode": "Neplatný kód stanice",
   "chargingFailed": "Nepodarilo sa spustiť nabíjanie",
   "paymentFailed": "Platba zlyhala",
-  "sessionExpired": "Relácia vypršala"
+  "sessionExpired": "Relácia vypršala",
+  "unknown": "Nastala neočakávaná chyba",
+  "saveFailed": "Nepodarilo sa uložiť zmeny"
 }

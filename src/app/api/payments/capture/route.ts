@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 import Stripe from 'stripe';
 import { getAuthenticatedUser } from '@/lib/services/authHelper';
 import { paymentIntentBelongsToUser } from '@/lib/services/stripeCustomer';
@@ -11,17 +12,18 @@ const stripe = process.env.STRIPE_SECRET_KEY
 // POST /api/payments/capture
 // Capture skutočnej sumy po ukončení nabíjania
 export async function POST(request: NextRequest) {
+  const t = await getTranslations('api');
   try {
     // Auth kontrola — potrebujeme celý user dokument pre ownership check
     const user = await getAuthenticatedUser(request.headers.get('authorization'));
     if (!user) {
-      return NextResponse.json({ error: 'Nie ste prihlásený' }, { status: 401 });
+      return NextResponse.json({ error: t('common.notSignedIn') }, { status: 401 });
     }
     const userId = String(user._id || user.email);
 
     if (!stripe) {
       return NextResponse.json(
-        { error: 'Stripe nie je nakonfigurovaný' },
+        { error: t('payments.stripeNotConfigured') },
         { status: 503 }
       );
     }
@@ -37,14 +39,14 @@ export async function POST(request: NextRequest) {
 
     if (!paymentIntentId) {
       return NextResponse.json(
-        { error: 'PaymentIntent ID je povinné' },
+        { error: t('payments.paymentIntentIdRequired') },
         { status: 400 }
       );
     }
 
     if (actualAmount === undefined || actualAmount < 0) {
       return NextResponse.json(
-        { error: 'Skutočná suma je povinná a musí byť nezáporná' },
+        { error: t('payments.actualAmountRequired') },
         { status: 400 }
       );
     }
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
     // Ownership: capture len na vlastných PaymentIntentoch
     if (!(await paymentIntentBelongsToUser(stripe, paymentIntent, userId, user))) {
       return NextResponse.json(
-        { error: 'PaymentIntent nepatrí prihlásenému používateľovi' },
+        { error: t('payments.paymentIntentNotOwned') },
         { status: 403 }
       );
     }
@@ -63,7 +65,7 @@ export async function POST(request: NextRequest) {
     if (paymentIntent.status !== 'requires_capture') {
       return NextResponse.json(
         {
-          error: 'PaymentIntent nie je v stave na capture',
+          error: t('payments.notCapturable'),
           currentStatus: paymentIntent.status,
         },
         { status: 400 }
@@ -78,7 +80,7 @@ export async function POST(request: NextRequest) {
     );
     if (!Number.isFinite(amountToCapture) || amountToCapture <= 0) {
       return NextResponse.json(
-        { error: 'Neplatná suma na capture' },
+        { error: t('payments.invalidCaptureAmount') },
         { status: 400 }
       );
     }
@@ -117,13 +119,13 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof Stripe.errors.StripeError) {
       return NextResponse.json(
-        { error: error.message },
+        { error: t('payments.captureFailed') },
         { status: error.statusCode || 500 }
       );
     }
 
     return NextResponse.json(
-      { error: 'Nepodarilo sa dokončiť platbu' },
+      { error: t('payments.captureFailed') },
       { status: 500 }
     );
   }

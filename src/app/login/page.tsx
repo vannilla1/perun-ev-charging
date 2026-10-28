@@ -6,10 +6,11 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts';
-import { EmailIcon, LockIcon, EyeIcon, EyeOffIcon, GoogleIcon, AppleIcon, BackIcon } from '@/components/Common';
+import { EmailIcon, LockIcon, EyeIcon, EyeOffIcon, GoogleIcon, AppleIcon, BackIcon, LocaleSwitcher } from '@/components/Common';
 
 export default function LoginPage() {
   const t = useTranslations('auth');
+  const tCommon = useTranslations('common');
   const router = useRouter();
   const { login, isLoading, isLoggedIn, error, clearError } = useAuth();
 
@@ -40,22 +41,22 @@ export default function LoginPage() {
 
   const validateForm = (): boolean => {
     if (!email.trim()) {
-      setFormError('Zadajte e-mailovú adresu');
+      setFormError(t('validation.emailRequired'));
       return false;
     }
 
     if (!email.includes('@')) {
-      setFormError('Neplatná e-mailová adresa');
+      setFormError(t('validation.emailInvalid'));
       return false;
     }
 
     if (!password) {
-      setFormError('Zadajte heslo');
+      setFormError(t('validation.passwordRequired'));
       return false;
     }
 
     if (password.length < 6) {
-      setFormError('Heslo musí mať aspoň 6 znakov');
+      setFormError(t('validation.passwordTooShort'));
       return false;
     }
 
@@ -80,14 +81,16 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-[var(--surface-secondary)] flex flex-col">
       {/* Header s back button */}
-      <div style={{ padding: '24px 16px 0 16px' }}>
+      <div className="flex items-center justify-between" style={{ padding: '24px 16px 0 16px' }}>
         <button
           onClick={() => router.back()}
+          aria-label={tCommon('back')}
           className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-full hover:bg-[var(--surface-secondary)] transition-colors flex items-center justify-center"
           style={{ width: '44px', height: '44px' }}
         >
           <BackIcon />
         </button>
+        <LocaleSwitcher />
       </div>
 
       {/* Content */}
@@ -107,7 +110,7 @@ export default function LoginPage() {
             unoptimized
             priority
           />
-          <p className="text-sm sm:text-base text-[var(--text-secondary)]">Prihláste sa do aplikácie</p>
+          <p className="text-sm sm:text-base text-[var(--text-secondary)]">{t('loginSubtitle')}</p>
         </div>
 
         {/* Form Card */}
@@ -137,7 +140,7 @@ export default function LoginPage() {
                   </div>
                   <input
                     type="email"
-                    placeholder="vas@email.sk"
+                    placeholder={t('emailPlaceholder')}
                     value={email}
                     onChange={handleEmailChange}
                     autoComplete="email"
@@ -173,6 +176,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? tCommon('hidePassword') : tCommon('showPassword')}
                     className="absolute inset-y-0 right-0 flex items-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
                     style={{ paddingRight: '14px' }}
                   >
@@ -203,7 +207,7 @@ export default function LoginPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>Prihlasujem...</span>
+                    <span>{t('loggingIn')}</span>
                   </>
                 ) : (
                   t('login')
@@ -217,7 +221,7 @@ export default function LoginPage() {
               style={{ margin: '24px 0', gap: '16px' }}
             >
               <div className="flex-1 h-px bg-[var(--border)]" />
-              <span className="text-xs sm:text-sm text-[var(--text-muted)]">alebo</span>
+              <span className="text-xs sm:text-sm text-[var(--text-muted)]">{tCommon('or')}</span>
               <div className="flex-1 h-px bg-[var(--border)]" />
             </div>
 

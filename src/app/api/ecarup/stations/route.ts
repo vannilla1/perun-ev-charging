@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 import { getEcarupAccessToken, ECARUP_API_BASE } from '@/lib/services/ecarupAuth';
 
 // Cache pre zoznam staníc (2 minúty)
@@ -340,6 +341,7 @@ async function fetchPricesInBatches(
 }
 
 export async function GET(request: Request) {
+  const t = await getTranslations('api');
   const { searchParams } = new URL(request.url);
   const filter = searchParams.get('filter') || '0';
   const userEmail = searchParams.get('userEmail')?.toLowerCase() || null;
@@ -348,7 +350,7 @@ export async function GET(request: Request) {
 
   if (!accessToken) {
     return NextResponse.json(
-      { error: 'Failed to authenticate with eCarUp API' },
+      { error: t('stations.ecarupAuthFailed') },
       { status: 401 }
     );
   }
@@ -377,7 +379,7 @@ export async function GET(request: Request) {
         const errorText = await response.text();
         console.error('eCarUp API error:', response.status, errorText);
         return NextResponse.json(
-          { error: 'Failed to fetch stations', details: errorText },
+          { error: t('stations.stationsFetchFailed'), details: errorText },
           { status: response.status }
         );
       }
@@ -476,7 +478,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('eCarUp API request failed:', error);
     return NextResponse.json(
-      { error: 'API request failed' },
+      { error: t('stations.requestFailed') },
       { status: 500 }
     );
   }

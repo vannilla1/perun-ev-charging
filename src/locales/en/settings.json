@@ -1,1 +1,34 @@
-{}
+{
+  "title": "Settings",
+  "items": {
+    "changePassword": {
+      "label": "Change password",
+      "description": "Change your sign-in password"
+    },
+    "about": {
+      "label": "About"
+    }
+  },
+  "changePassword": {
+    "title": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmNewPassword": "Confirm new password",
+    "newPasswordPlaceholder": "At least 6 characters",
+    "confirmPlaceholder": "Repeat password",
+    "submit": "Change password",
+    "submitting": "Changing password...",
+    "hint": "Your password must be at least 6 characters. We recommend a mix of letters, numbers and special characters.",
+    "failed": "Couldn't change the password",
+    "successTitle": "Password changed",
+    "successBody": "Your password has been changed.",
+    "backToProfile": "Back to profile",
+    "validation": {
+      "currentRequired": "Enter your current password",
+      "newRequired": "Enter a new password",
+      "newTooShort": "New password must be at least 6 characters",
+      "mismatch": "New passwords don't match",
+      "sameAsCurrent": "New password must be different from the current one"
+    }
+  }
+}

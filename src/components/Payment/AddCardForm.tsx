@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button, Input, Card, CardContent } from '@/components/Common';
 import { paymentService, AddCardRequest } from '@/services/api/paymentService';
 
@@ -10,6 +11,8 @@ interface AddCardFormProps {
 }
 
 export const AddCardForm = ({ onSuccess, onCancel }: AddCardFormProps) => {
+  const t = useTranslations('payment');
+  const tCommon = useTranslations('common');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,24 +63,24 @@ export const AddCardForm = ({ onSuccess, onCancel }: AddCardFormProps) => {
     // Validácia čísla karty
     const cleanedNumber = formData.cardNumber.replace(/\s/g, '');
     if (!paymentService.validateCardNumber(cleanedNumber)) {
-      newErrors.cardNumber = 'Neplatné číslo karty';
+      newErrors.cardNumber = t('validation.cardNumber');
     }
 
     // Validácia platnosti
     const month = parseInt(formData.expiryMonth, 10);
     const year = parseInt(formData.expiryYear, 10);
     if (!paymentService.validateExpiry(month, year)) {
-      newErrors.expiry = 'Neplatná platnosť karty';
+      newErrors.expiry = t('validation.expiry');
     }
 
     // Validácia CVC
     if (!paymentService.validateCVC(formData.cvc)) {
-      newErrors.cvc = 'Neplatný CVC kód';
+      newErrors.cvc = t('validation.cvc');
     }
 
     // Validácia mena držiteľa
     if (formData.cardholderName.trim().length < 3) {
-      newErrors.cardholderName = 'Zadajte meno držiteľa karty';
+      newErrors.cardholderName = t('validation.holderName');
     }
 
     setErrors(newErrors);
@@ -105,7 +108,7 @@ export const AddCardForm = ({ onSuccess, onCancel }: AddCardFormProps) => {
       await paymentService.addPaymentMethod(request);
       onSuccess?.();
     } catch {
-      setError('Nepodarilo sa pridať kartu. Skúste to znova.');
+      setError(t('addCard.failed'));
     } finally {
       setIsLoading(false);
     }
@@ -114,7 +117,7 @@ export const AddCardForm = ({ onSuccess, onCancel }: AddCardFormProps) => {
   return (
     <Card padding="none">
       <div className="p-4 border-b border-[var(--border)]">
-        <h3 className="font-semibold text-[var(--text-primary)]">Pridať novú kartu</h3>
+        <h3 className="font-semibold text-[var(--text-primary)]">{t('addCard.title')}</h3>
       </div>
       <CardContent className="p-4">
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -126,7 +129,7 @@ export const AddCardForm = ({ onSuccess, onCancel }: AddCardFormProps) => {
 
           <div>
             <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5">
-              Číslo karty
+              {t('card.number')}
             </label>
             <input
               type="text"
@@ -149,13 +152,13 @@ export const AddCardForm = ({ onSuccess, onCancel }: AddCardFormProps) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5">
-                Platnosť
+                {t('card.expiry')}
               </label>
               <input
                 type="text"
                 value={getExpiryDisplay()}
                 onChange={handleExpiryChange}
-                placeholder="MM/RR"
+                placeholder={t('card.expiryPlaceholder')}
                 maxLength={5}
                 className={`
                   w-full px-4 py-3 rounded-[var(--border-radius-sm)] border
@@ -172,7 +175,7 @@ export const AddCardForm = ({ onSuccess, onCancel }: AddCardFormProps) => {
 
             <div>
               <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5">
-                CVC
+                {t('card.cvc')}
               </label>
               <input
                 type="text"
@@ -196,10 +199,10 @@ export const AddCardForm = ({ onSuccess, onCancel }: AddCardFormProps) => {
           </div>
 
           <Input
-            label="Meno držiteľa karty"
+            label={t('card.holderName')}
             value={formData.cardholderName}
             onChange={(e) => setFormData((prev) => ({ ...prev, cardholderName: e.target.value }))}
-            placeholder="JÁN NOVÁK"
+            placeholder={t('card.holderNamePlaceholder')}
             error={errors.cardholderName}
             disabled={isLoading}
           />
@@ -213,18 +216,18 @@ export const AddCardForm = ({ onSuccess, onCancel }: AddCardFormProps) => {
               disabled={isLoading}
             />
             <span className="text-sm text-[var(--text-secondary)]">
-              Nastaviť ako predvolenú platobnú metódu
+              {t('addCard.makeDefault')}
             </span>
           </label>
 
           <div className="flex gap-3 pt-2">
             {onCancel && (
               <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
-                Zrušiť
+                {tCommon('cancel')}
               </Button>
             )}
             <Button type="submit" fullWidth loading={isLoading}>
-              Pridať kartu
+              {t('addCard.submit')}
             </Button>
           </div>
         </form>

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { login as apiLogin, register as apiRegister, logout as apiLogout, getCurrentUser, isAuthenticated } from '@/services/api/authService';
+import { useTranslations } from 'next-intl';
+import { login as apiLogin, register as apiRegister, logout as apiLogout, getCurrentUser, isAuthenticated, AuthApiError } from '@/services/api/authService';
 import type { User } from '@/types';
 
 interface AuthContextType {
@@ -19,6 +20,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const t = useTranslations('auth');
   const [user, setUser] = useState<User | null>(() => {
     // Inicializácia používateľa priamo z localStorage (synchronne)
     if (typeof window !== 'undefined') {
@@ -47,13 +49,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const loggedInUser = await apiLogin(email, password);
       setUser(loggedInUser);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Prihlásenie zlyhalo';
+      const message = err instanceof AuthApiError ? err.message : t('loginFailed');
       setError(message);
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const register = useCallback(async (email: string, password: string, firstName: string, lastName: string) => {
     setIsLoading(true);
@@ -63,13 +65,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const newUser = await apiRegister(email, password, firstName, lastName);
       setUser(newUser);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Registrácia zlyhala';
+      const message = err instanceof AuthApiError ? err.message : t('registerFailed');
       setError(message);
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const logout = useCallback(() => {
     apiLogout();

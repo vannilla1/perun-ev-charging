@@ -9,4 +9,4 @@ export {
   subscribeToPush,
 } from './pushNotifications';
 
-export type { NotificationOptions } from './pushNotifications';
+export type { NotificationOptions, PushNotificationTranslator } from './pushNotifications';

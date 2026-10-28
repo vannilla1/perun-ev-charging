@@ -14,5 +14,92 @@
   "finalCost": "Celková cena",
   "connectCable": "Pripojte kábel",
   "waitingForVehicle": "Čakám na vozidlo",
-  "preparingSession": "Pripravujem reláciu"
+  "preparingSession": "Pripravujem reláciu",
+  "or": "alebo",
+  "pickOnMap": "Vybrať stanicu na mape",
+  "stationFallback": "Nabíjacia stanica",
+  "unknownStation": "Neznáma stanica",
+  "selectConnector": "Vyberte konektor:",
+  "connectorNumber": "Konektor {number}",
+  "connectorState": {
+    "available": "Dostupný",
+    "occupied": "Obsadený",
+    "unavailable": "Nedostupný"
+  },
+  "stationState": {
+    "available": "Dostupná",
+    "occupied": "Obsadená",
+    "unavailable": "Nedostupná",
+    "faulted": "Porucha",
+    "charging": "Prebieha nabíjanie",
+    "preparing": "Pripravuje sa",
+    "finishing": "Dokončuje sa",
+    "reserved": "Rezervovaná",
+    "unknown": "Neznámy stav"
+  },
+  "scanQrCode": "Skenovať QR kód",
+  "loadingStation": "Načítavam stanicu...",
+  "pleaseWait": "Prosím, počkajte",
+  "maxPower": "Maximálny výkon",
+  "connectorType": "Typ konektora",
+  "yourEnergyPrice": "Vaša cena za energiu",
+  "publicPrice": "Verejná cena",
+  "energyPrice": "Cena za energiu",
+  "timePrice": "Cena za čas",
+  "pricePerKwhLabel": "Cena za kWh",
+  "perKwh": "{price}/kWh",
+  "perHour": "{price}/hod.",
+  "free": "Zadarmo",
+  "chargeAsGuest": "Nabíjať bez registrácie",
+  "signIn": "Prihlásiť sa",
+  "stationUnavailable": "Stanica momentálne nie je dostupná. Skúste to neskôr.",
+  "payment": {
+    "title": "Platba za nabíjanie",
+    "preAuthTitle": "Predautorizácia",
+    "preAuthText": "Na vašej karte bude dočasne zablokovaná suma <strong>{amount}</strong>. Po ukončení nabíjania sa strhne len skutočná suma.",
+    "emailLabel": "Váš e-mail (pre potvrdenie)",
+    "emailPlaceholder": "vas@email.sk",
+    "continue": "Pokračovať k platbe"
+  },
+  "authorizing": {
+    "title": "Autorizujem platbu...",
+    "text": "Prosím, počkajte, overujeme vašu platobnú kartu"
+  },
+  "starting": {
+    "title": "Spúšťam nabíjanie...",
+    "text": "Pripojte kábel k vozidlu",
+    "paymentAuthorized": "Platba bola autorizovaná: {amount}"
+  },
+  "guestBanner": "Predautorizácia: {amount} | Po nabíjaní sa strhne skutočná suma",
+  "stopping": {
+    "title": "Zastavujem nabíjanie...",
+    "capturing": "Strhávam platbu vo výške {amount}"
+  },
+  "receiptSent": "Potvrdenie sme odoslali na: {email}",
+  "newSession": "Nové nabíjanie",
+  "durationValue": {
+    "hoursMinutes": "{hours} h {minutes} min",
+    "minutesSeconds": "{minutes} min {seconds} s",
+    "seconds": "{seconds} s"
+  },
+  "titles": {
+    "connectorSelect": "Výber konektora",
+    "stationInfo": "Nabíjacia stanica",
+    "payment": "Platba",
+    "starting": "Spúšťam nabíjanie",
+    "charging": "Nabíjanie",
+    "completed": "Dokončené"
+  },
+  "errors": {
+    "generic": "Niečo sa pokazilo",
+    "stationInfoFailed": "Nepodarilo sa načítať informácie o stanici",
+    "connectorsFailed": "Nepodarilo sa načítať konektory",
+    "stationFailed": "Nepodarilo sa načítať stanicu",
+    "startFailed": "Nepodarilo sa spustiť nabíjanie",
+    "stopFailed": "Nepodarilo sa zastaviť nabíjanie",
+    "preAuthFailed": "Nepodarilo sa vytvoriť predautorizáciu",
+    "missingStartData": "Chýbajú údaje pre spustenie nabíjania",
+    "invalidQr": "Neplatný QR kód. Obsah: „{data}“",
+    "codeTooShort": "Kód musí mať aspoň 4 znaky"
+  }
 }

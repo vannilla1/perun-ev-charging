@@ -19,6 +19,8 @@ const files = (loc) => readdirSync(join(root, loc)).filter((f) => f.endsWith('.j
 function flatten(obj, prefix = '', out = {}) {
   for (const [k, v] of Object.entries(obj)) {
     const key = prefix ? `${prefix}.${k}` : k;
+    // next-intl berie bodku ako vnorenie — kľúč s bodkou sa nikdy nenájde
+    if (k.includes('.')) dotted.push(key);
     if (v && typeof v === 'object') flatten(v, key, out);
     else out[key] = v;
   }
@@ -41,8 +43,14 @@ function args(msg) {
 }
 
 const errors = [];
+const dotted = [];
 const baseFiles = files(base);
-const load = (loc, f) => flatten(JSON.parse(readFileSync(join(root, loc, f), 'utf8')));
+const load = (loc, f) => {
+  dotted.length = 0;
+  const out = flatten(JSON.parse(readFileSync(join(root, loc, f), 'utf8')));
+  for (const k of dotted) errors.push(`${loc}/${f}: kľúč ${k} obsahuje bodku`);
+  return out;
+};
 
 for (const loc of locales) {
   const locFiles = files(loc);

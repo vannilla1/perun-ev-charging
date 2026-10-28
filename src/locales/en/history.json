@@ -1,14 +1,20 @@
 {
-  "title": "História nabíjaní",
-  "totalEnergy": "Celková energia",
-  "totalCost": "Celkové náklady",
-  "totalSessions": "Počet nabíjaní",
-  "noHistory": "Zatiaľ žiadna história",
-  "noHistoryDescription": "Tu uvidíte prehľad vašich nabíjaní",
-  "sessionDetails": "Detail relácie",
-  "downloadInvoice": "Stiahnuť faktúru",
-  "filterByDate": "Filtrovať podľa dátumu",
-  "thisMonth": "Tento mesiac",
-  "lastMonth": "Minulý mesiac",
-  "allTime": "Celé obdobie"
+  "title": "Charging history",
+  "totalEnergy": "Total energy",
+  "totalCost": "Total cost",
+  "totalSessions": "Sessions",
+  "noHistory": "No history yet",
+  "noHistoryDescription": "Your charging sessions will appear here",
+  "sessionDetails": "Session details",
+  "downloadInvoice": "Download invoice",
+  "filterByDate": "Filter by date",
+  "thisMonth": "This month",
+  "lastMonth": "Last month",
+  "allTime": "All time",
+  "loading": "Loading history...",
+  "loadError": "Could not load history",
+  "duration": {
+    "hoursMinutes": "{hours} h {minutes} min",
+    "minutes": "{minutes} min"
+  }
 }

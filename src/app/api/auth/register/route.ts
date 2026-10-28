@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 import {
   findUserByEmail,
   createUser,
@@ -10,6 +11,7 @@ import {
 
 // POST /api/auth/register
 export async function POST(request: NextRequest) {
+  const t = await getTranslations('api');
   try {
     const body = await request.json();
     const { email, password, firstName, lastName, phone } = body;
@@ -17,14 +19,14 @@ export async function POST(request: NextRequest) {
     // Validácia
     if (!email || !password) {
       return NextResponse.json(
-        { error: 'Email a heslo sú povinné' },
+        { error: t('auth.credentialsRequired') },
         { status: 400 }
       );
     }
 
     if (password.length < 6) {
       return NextResponse.json(
-        { error: 'Heslo musí mať aspoň 6 znakov' },
+        { error: t('auth.passwordTooShort', { min: 6 }) },
         { status: 400 }
       );
     }
@@ -33,7 +35,7 @@ export async function POST(request: NextRequest) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json(
-        { error: 'Neplatná emailová adresa' },
+        { error: t('common.invalidEmail') },
         { status: 400 }
       );
     }
@@ -42,7 +44,7 @@ export async function POST(request: NextRequest) {
     const existingUser = await findUserByEmail(email);
     if (existingUser) {
       return NextResponse.json(
-        { error: 'Účet s týmto emailom už existuje' },
+        { error: t('auth.accountExists') },
         { status: 409 }
       );
     }
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest) {
         expiresIn: 3600,
         tokenType: 'Bearer',
       },
-      message: 'Registrácia úspešná! Vitajte v Perun Electromobility.',
+      message: t('auth.registered'),
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -85,13 +87,13 @@ export async function POST(request: NextRequest) {
     // Ak MongoDB nie je dostupné, vráťime užitočnú chybu
     if (error instanceof Error && error.message.includes('MONGODB_URI')) {
       return NextResponse.json(
-        { error: 'Databáza nie je nakonfigurovaná. Kontaktujte podporu.' },
+        { error: t('auth.databaseNotConfigured') },
         { status: 503 }
       );
     }
 
     return NextResponse.json(
-      { error: 'Interná chyba servera' },
+      { error: t('common.internalError') },
       { status: 500 }
     );
   }

@@ -1,1 +1,20 @@
-{}
+{
+  "instructions": "Namierte kameru na QR kód nabíjacej stanice",
+  "startingCamera": "Spúšťam kameru...",
+  "backCamera": "Zadná kamera",
+  "frontCamera": "Predná kamera",
+  "switchToFront": "Prepnúť na prednú kameru",
+  "switchToBack": "Prepnúť na zadnú kameru",
+  "cameraStartFailed": "Nepodarilo sa spustiť kameru. Povoľte prístup ku kamere v nastaveniach prehliadača.",
+  "httpsRequired": "Kamera vyžaduje zabezpečené pripojenie (HTTPS). Otvorte aplikáciu cez https:// alebo localhost.",
+  "secureRequired": {
+    "title": "Vyžaduje sa zabezpečené pripojenie",
+    "text": "Prístup ku kamere je povolený len cez HTTPS alebo localhost. Ak chcete skenovať QR kódy, otvorte aplikáciu cez zabezpečené pripojenie."
+  },
+  "manualHint": "Kód stanice môžete zadať aj manuálne:",
+  "enterManually": "Zadať kód manuálne →",
+  "permissionDenied": {
+    "title": "Prístup ku kamere bol zamietnutý",
+    "hint": "Povoľte prístup ku kamere v nastaveniach prehliadača"
+  }
+}

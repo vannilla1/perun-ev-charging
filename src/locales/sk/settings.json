@@ -1,1 +1,34 @@
-{}
+{
+  "title": "Nastavenia",
+  "items": {
+    "changePassword": {
+      "label": "Zmena hesla",
+      "description": "Zmeniť prihlasovacie heslo"
+    },
+    "about": {
+      "label": "O aplikácii"
+    }
+  },
+  "changePassword": {
+    "title": "Zmena hesla",
+    "currentPassword": "Aktuálne heslo",
+    "newPassword": "Nové heslo",
+    "confirmNewPassword": "Potvrďte nové heslo",
+    "newPasswordPlaceholder": "Min. 6 znakov",
+    "confirmPlaceholder": "Zopakujte heslo",
+    "submit": "Zmeniť heslo",
+    "submitting": "Mením heslo...",
+    "hint": "Heslo musí mať aspoň 6 znakov. Odporúčame kombináciu písmen, číslic a špeciálnych znakov.",
+    "failed": "Nepodarilo sa zmeniť heslo",
+    "successTitle": "Heslo bolo zmenené",
+    "successBody": "Vaše heslo bolo úspešne zmenené.",
+    "backToProfile": "Späť na profil",
+    "validation": {
+      "currentRequired": "Zadajte aktuálne heslo",
+      "newRequired": "Zadajte nové heslo",
+      "newTooShort": "Nové heslo musí mať aspoň 6 znakov",
+      "mismatch": "Nové heslá sa nezhodujú",
+      "sameAsCurrent": "Nové heslo sa musí líšiť od aktuálneho"
+    }
+  }
+}

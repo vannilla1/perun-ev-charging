@@ -2,6 +2,8 @@ import { API_CONFIG } from './config';
 import { setAccessToken, removeAccessToken } from './client';
 import type { User } from '@/types';
 
+export class AuthApiError extends Error {}
+
 interface AuthTokens {
   accessToken: string;
   refreshToken?: string;
@@ -132,7 +134,7 @@ export async function login(email: string, password: string): Promise<User> {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || 'Prihlásenie zlyhalo');
+      throw data.error ? new AuthApiError(data.error) : new Error('LOGIN_FAILED');
     }
 
     const { user, tokens } = data as LoginResponse;
@@ -181,7 +183,7 @@ export async function register(
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || 'Registrácia zlyhala');
+      throw data.error ? new AuthApiError(data.error) : new Error('REGISTER_FAILED');
     }
 
     const { user, tokens } = data as RegisterResponse;

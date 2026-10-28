@@ -10,5 +10,11 @@
   "filterByDate": "Filtrovať podľa dátumu",
   "thisMonth": "Tento mesiac",
   "lastMonth": "Minulý mesiac",
-  "allTime": "Celé obdobie"
+  "allTime": "Celé obdobie",
+  "loading": "Načítavam históriu...",
+  "loadError": "Nepodarilo sa načítať históriu",
+  "duration": {
+    "hoursMinutes": "{hours} h {minutes} min",
+    "minutes": "{minutes} min"
+  }
 }

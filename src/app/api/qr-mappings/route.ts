@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 import { getDb } from '@/lib/mongodb';
 import { requireAuth as checkAuth } from '@/lib/services/authHelper';
 
@@ -13,16 +14,17 @@ async function isAuthenticated(request: NextRequest): Promise<boolean> {
  * server-side kľúč (x-admin-key == ADMIN_API_KEY env). Bez neho by hociktorý
  * prihlásený driver vedel presmerovať QR kódy na inú stanicu.
  */
-function checkAdminKey(request: NextRequest): NextResponse | null {
+async function checkAdminKey(request: NextRequest): Promise<NextResponse | null> {
+  const t = await getTranslations('api');
   const configured = process.env.ADMIN_API_KEY;
   if (!configured) {
     return NextResponse.json(
-      { error: 'Admin API nie je nakonfigurované (ADMIN_API_KEY)' },
+      { error: t('qrMappings.adminNotConfigured') },
       { status: 503 }
     );
   }
   if (request.headers.get('x-admin-key') !== configured) {
-    return NextResponse.json({ error: 'Neplatný admin kľúč' }, { status: 403 });
+    return NextResponse.json({ error: t('qrMappings.invalidAdminKey') }, { status: 403 });
   }
   return null;
 }
@@ -31,6 +33,7 @@ function checkAdminKey(request: NextRequest): NextResponse | null {
 // pred loginom a serial pozná každý, kto vidí vytlačený QR kód). Výpis VŠETKÝCH
 // mapovaní vyžaduje prihlásenie (full-dump bol verejný data leak).
 export async function GET(request: NextRequest) {
+  const t = await getTranslations('api');
   try {
     const { searchParams } = new URL(request.url);
     const serial = searchParams.get('serial');
@@ -43,7 +46,7 @@ export async function GET(request: NextRequest) {
       const mapping = await collection.findOne({ serial });
       if (!mapping) {
         return NextResponse.json(
-          { error: 'Mapovanie nenájdené' },
+          { error: t('qrMappings.notFound') },
           { status: 404 }
         );
       }
@@ -52,14 +55,14 @@ export async function GET(request: NextRequest) {
 
     // Full list len pre prihlásených
     if (!(await isAuthenticated(request))) {
-      return NextResponse.json({ error: 'Nie ste prihlásený' }, { status: 401 });
+      return NextResponse.json({ error: t('common.notSignedIn') }, { status: 401 });
     }
     const mappings = await collection.find({}).toArray();
     return NextResponse.json({ mappings });
   } catch (error) {
     console.error('QR mappings GET error:', error);
     return NextResponse.json(
-      { error: 'Chyba pri načítaní mapovaní' },
+      { error: t('qrMappings.loadFailed') },
       { status: 500 }
     );
   }
@@ -67,10 +70,11 @@ export async function GET(request: NextRequest) {
 
 // POST /api/qr-mappings - Pridať nové mapovanie (vyžaduje auth + admin kľúč)
 export async function POST(request: NextRequest) {
+  const t = await getTranslations('api');
   if (!(await isAuthenticated(request))) {
-    return NextResponse.json({ error: 'Nie ste prihlásený' }, { status: 401 });
+    return NextResponse.json({ error: t('common.notSignedIn') }, { status: 401 });
   }
-  const adminError = checkAdminKey(request);
+  const adminError = await checkAdminKey(request);
   if (adminError) return adminError;
 
   try {
@@ -79,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     if (!serial || !stationId) {
       return NextResponse.json(
-        { error: 'Serial a stationId sú povinné' },
+        { error: t('qrMappings.serialAndStationRequired') },
         { status: 400 }
       );
     }
@@ -110,7 +114,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('QR mappings POST error:', error);
     return NextResponse.json(
-      { error: 'Chyba pri ukladaní mapovania' },
+      { error: t('qrMappings.saveFailed') },
       { status: 500 }
     );
   }
@@ -118,10 +122,11 @@ export async function POST(request: NextRequest) {
 
 // DELETE /api/qr-mappings - Odstrániť mapovanie (vyžaduje auth + admin kľúč)
 export async function DELETE(request: NextRequest) {
+  const t = await getTranslations('api');
   if (!(await isAuthenticated(request))) {
-    return NextResponse.json({ error: 'Nie ste prihlásený' }, { status: 401 });
+    return NextResponse.json({ error: t('common.notSignedIn') }, { status: 401 });
   }
-  const adminError = checkAdminKey(request);
+  const adminError = await checkAdminKey(request);
   if (adminError) return adminError;
 
   try {
@@ -130,7 +135,7 @@ export async function DELETE(request: NextRequest) {
 
     if (!serial) {
       return NextResponse.json(
-        { error: 'Serial je povinný' },
+        { error: t('qrMappings.serialRequired') },
         { status: 400 }
       );
     }
@@ -142,7 +147,7 @@ export async function DELETE(request: NextRequest) {
 
     if (result.deletedCount === 0) {
       return NextResponse.json(
-        { error: 'Mapovanie nenájdené' },
+        { error: t('qrMappings.notFound') },
         { status: 404 }
       );
     }
@@ -151,7 +156,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error('QR mappings DELETE error:', error);
     return NextResponse.json(
-      { error: 'Chyba pri odstraňovaní mapovania' },
+      { error: t('qrMappings.deleteFailed') },
       { status: 500 }
     );
   }

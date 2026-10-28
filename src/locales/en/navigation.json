@@ -1,6 +1,7 @@
 {
-  "map": "Mapa",
-  "charging": "Nabíjanie",
-  "history": "História",
-  "profile": "Profil"
+  "map": "Map",
+  "charging": "Charging",
+  "history": "History",
+  "profile": "Profile",
+  "label": "Main navigation"
 }

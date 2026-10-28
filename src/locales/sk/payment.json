@@ -1,1 +1,72 @@
-{}
+{
+  "title": "Platobné metódy",
+  "addNewCard": "Pridať novú kartu",
+  "empty": {
+    "title": "Žiadne platobné metódy",
+    "description": "Pridajte kartu pre rýchle a pohodlné platby za nabíjanie."
+  },
+  "securityNote": "Vaše platobné údaje sú bezpečne uložené a šifrované. Nikdy neukladáme kompletné číslo karty.",
+  "confirmRemove": "Naozaj chcete odstrániť túto platobnú metódu?",
+  "notConfigured": "Platobný systém nie je nakonfigurovaný. Kontaktujte podporu.",
+  "securedByStripe": "Platobné údaje sú spracované bezpečne cez Stripe",
+  "card": {
+    "number": "Číslo karty",
+    "expiry": "Platnosť",
+    "expiryPlaceholder": "MM/RR",
+    "cvc": "CVC",
+    "holderName": "Meno držiteľa karty",
+    "holderNamePlaceholder": "JÁN NOVÁK",
+    "validUntil": "Platnosť do {date}",
+    "default": "Predvolená",
+    "setDefault": "Nastaviť ako predvolenú",
+    "setDefaultShort": "Nastaviť",
+    "remove": "Odstrániť platobnú metódu",
+    "genericBrand": "KARTA"
+  },
+  "addCard": {
+    "title": "Pridať novú kartu",
+    "makeDefault": "Nastaviť ako predvolenú platobnú metódu",
+    "submit": "Pridať kartu",
+    "failed": "Nepodarilo sa pridať kartu. Skúste to znova."
+  },
+  "validation": {
+    "cardNumber": "Neplatné číslo karty",
+    "expiry": "Neplatná platnosť karty",
+    "cvc": "Neplatný CVC kód",
+    "holderName": "Zadajte meno držiteľa karty"
+  },
+  "stripeForm": {
+    "save": "Uložiť kartu",
+    "saving": "Ukladám...",
+    "saveError": "Pri ukladaní karty nastala chyba",
+    "saveFailed": "Nepodarilo sa uložiť kartu. Skúste to znova.",
+    "formLoadError": "Formulár sa nepodarilo načítať"
+  },
+  "errors": {
+    "createFailed": "Nepodarilo sa vytvoriť platbu",
+    "failed": "Platba zlyhala",
+    "notInitialized": "Platba nie je inicializovaná"
+  },
+  "settings": {
+    "saved": "Uložené platobné metódy",
+    "emptyDescription": "Pridajte platobnú metódu pre rýchle a bezpečné platby za nabíjanie.",
+    "add": "Pridať platobnú metódu",
+    "creditDebitCard": "Kreditná/debetná karta",
+    "comingSoon": "Čoskoro",
+    "comingSoonAlert": "{method} bude čoskoro k dispozícii",
+    "securityNote": "Vaše platobné údaje sú bezpečne šifrované. Kompletné čísla kariet nikdy neukladáme na našich serveroch.",
+    "howItWorks": {
+      "title": "Ako platby fungujú",
+      "autoCharge": "Po dokončení nabíjania sa suma automaticky strhne z vašej karty",
+      "certifiedProvider": "Platobné údaje spracúva certifikovaný poskytovateľ",
+      "history": "Históriu platieb nájdete v sekcii „História“"
+    },
+    "addModal": {
+      "title": "Pridať platobnú kartu",
+      "redirect": "Presmerujeme vás na zabezpečený platobný formulár.",
+      "securePayment": "Bezpečná platba",
+      "encryption": "Vaše údaje sú šifrované 256-bitovým SSL šifrovaním.",
+      "continue": "Pokračovať"
+    }
+  }
+}

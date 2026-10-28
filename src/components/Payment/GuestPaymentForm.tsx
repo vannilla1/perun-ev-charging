@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useFormatter, useTranslations } from 'next-intl';
 import {
   useStripe,
   useElements,
@@ -11,6 +12,7 @@ import {
 } from '@stripe/react-stripe-js';
 import { PaymentRequest } from '@stripe/stripe-js';
 import { Button } from '@/components/Common';
+import { stripeErrorMessage } from './StripeProvider';
 
 interface StationInfo {
   name: string;
@@ -51,6 +53,10 @@ export function GuestPaymentForm({
   onPaymentConfirmed,
   onCancel,
 }: GuestPaymentFormProps) {
+  const t = useTranslations('guest');
+  const tPayment = useTranslations('payment');
+  const tCommon = useTranslations('common');
+  const format = useFormatter();
   const stripe = useStripe();
   const elements = useElements();
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +65,7 @@ export function GuestPaymentForm({
   const [emailError, setEmailError] = useState<string | null>(null);
   const [paymentRequest, setPaymentRequest] = useState<PaymentRequest | null>(null);
   const [canMakePayment, setCanMakePayment] = useState(false);
+  const formattedPreAuth = format.number(preAuthAmount, { style: 'currency', currency: 'EUR' });
 
   // Initialize Apple Pay / Google Pay
   useEffect(() => {
@@ -68,7 +75,7 @@ export function GuestPaymentForm({
       country: 'SK',
       currency: 'eur',
       total: {
-        label: `Nabíjanie - ${stationInfo.name}`,
+        label: t('paymentForm.walletLabel', { station: stationInfo.name }),
         amount: Math.round(preAuthAmount * 100),
       },
       requestPayerEmail: true,
@@ -95,7 +102,7 @@ export function GuestPaymentForm({
 
       if (confirmError) {
         ev.complete('fail');
-        setError(confirmError.message || 'Platba zlyhala');
+        setError(stripeErrorMessage(confirmError, t('errors.paymentFailed')));
         return;
       }
 
@@ -106,22 +113,22 @@ export function GuestPaymentForm({
       } else if (paymentIntent?.status === 'requires_action') {
         const { error: actionError } = await stripe.confirmCardPayment(clientSecret);
         if (actionError) {
-          setError(actionError.message || 'Overenie zlyhalo');
+          setError(stripeErrorMessage(actionError, t('errors.verificationFailed')));
         } else {
           onPaymentConfirmed(paymentIntent.id, ev.payerEmail || '');
         }
       }
     });
-  }, [stripe, clientSecret, preAuthAmount, stationInfo.name, onPaymentConfirmed]);
+  }, [stripe, clientSecret, preAuthAmount, stationInfo.name, onPaymentConfirmed, t]);
 
   const validateEmail = (emailValue: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailValue) {
-      setEmailError('Email je povinný');
+      setEmailError(t('validation.emailRequired'));
       return false;
     }
     if (!emailRegex.test(emailValue)) {
-      setEmailError('Neplatný formát emailu');
+      setEmailError(t('validation.emailInvalid'));
       return false;
     }
     setEmailError(null);
@@ -145,7 +152,7 @@ export function GuestPaymentForm({
     const cardNumberElement = elements.getElement(CardNumberElement);
 
     if (!cardNumberElement) {
-      setError('Chyba pri načítaní formulára');
+      setError(t('errors.formLoadError'));
       setIsProcessing(false);
       return;
     }
@@ -164,7 +171,7 @@ export function GuestPaymentForm({
     );
 
     if (stripeError) {
-      setError(stripeError.message || 'Nastala chyba pri platbe');
+      setError(stripeErrorMessage(stripeError, t('errors.generic')));
       setIsProcessing(false);
       return;
     }
@@ -173,7 +180,7 @@ export function GuestPaymentForm({
       // Predautorizácia úspešná
       onPaymentConfirmed(paymentIntent.id, email);
     } else {
-      setError('Nepodarilo sa autorizovať platbu. Skúste to znova.');
+      setError(t('errors.authorizationFailed'));
     }
 
     setIsProcessing(false);
@@ -190,9 +197,9 @@ export function GuestPaymentForm({
           {stationInfo.address}
         </p>
         <div className="flex justify-between items-center pt-3 border-t border-[var(--border)]">
-          <span className="text-sm text-[var(--text-secondary)]">Cena za kWh</span>
+          <span className="text-sm text-[var(--text-secondary)]">{t('paymentForm.pricePerKwh')}</span>
           <span className="font-semibold text-[var(--text-primary)]">
-            {stationInfo.pricePerKwh.toFixed(2)} EUR
+            {format.number(stationInfo.pricePerKwh, { style: 'currency', currency: 'EUR' })}
           </span>
         </div>
       </div>
@@ -202,11 +209,12 @@ export function GuestPaymentForm({
         <div className="flex items-start gap-3">
           <div className="text-2xl">💳</div>
           <div>
-            <h4 className="font-semibold text-blue-900">Predautorizácia</h4>
+            <h4 className="font-semibold text-blue-900">{t('paymentForm.preAuthTitle')}</h4>
             <p className="text-sm text-blue-700 mt-1">
-              Na vašej karte bude dočasne zablokovaná suma{' '}
-              <strong>{preAuthAmount.toFixed(2)} EUR</strong>.
-              Po ukončení nabíjania bude strhnutá len skutočná suma.
+              {t.rich('paymentForm.preAuthInfo', {
+                amount: formattedPreAuth,
+                strong: (chunks) => <strong>{chunks}</strong>,
+              })}
             </p>
           </div>
         </div>
@@ -229,7 +237,7 @@ export function GuestPaymentForm({
           />
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-[var(--border)]" />
-            <span className="text-sm text-[var(--text-muted)]">alebo platobnou kartou</span>
+            <span className="text-sm text-[var(--text-muted)]">{t('paymentForm.orPayByCard')}</span>
             <div className="flex-1 h-px bg-[var(--border)]" />
           </div>
         </div>
@@ -240,7 +248,7 @@ export function GuestPaymentForm({
         {/* Email */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-            Email (pre potvrdenie)
+            {t('paymentForm.email')}
           </label>
           <input
             type="email"
@@ -250,7 +258,7 @@ export function GuestPaymentForm({
               if (emailError) validateEmail(e.target.value);
             }}
             onBlur={() => validateEmail(email)}
-            placeholder="vas@email.sk"
+            placeholder={t('paymentForm.emailPlaceholder')}
             className={`w-full p-3 border rounded-xl bg-white focus:outline-none focus:ring-2 transition-all ${
               emailError
                 ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
@@ -265,7 +273,7 @@ export function GuestPaymentForm({
         {/* Card Number */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-            Číslo karty
+            {tPayment('card.number')}
           </label>
           <div className="p-3 border border-[var(--border)] rounded-xl bg-white focus-within:border-[var(--perun-blue)] focus-within:ring-2 focus-within:ring-[var(--perun-blue)]/20 transition-all">
             <CardNumberElement options={CARD_ELEMENT_OPTIONS} />
@@ -276,7 +284,7 @@ export function GuestPaymentForm({
         <div className="flex gap-4 mb-4">
           <div className="flex-1">
             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-              Platnosť
+              {tPayment('card.expiry')}
             </label>
             <div className="p-3 border border-[var(--border)] rounded-xl bg-white focus-within:border-[var(--perun-blue)] focus-within:ring-2 focus-within:ring-[var(--perun-blue)]/20 transition-all">
               <CardExpiryElement options={CARD_ELEMENT_OPTIONS} />
@@ -284,7 +292,7 @@ export function GuestPaymentForm({
           </div>
           <div className="flex-1">
             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-              CVC
+              {tPayment('card.cvc')}
             </label>
             <div className="p-3 border border-[var(--border)] rounded-xl bg-white focus-within:border-[var(--perun-blue)] focus-within:ring-2 focus-within:ring-[var(--perun-blue)]/20 transition-all">
               <CardCvcElement options={CARD_ELEMENT_OPTIONS} />
@@ -308,7 +316,7 @@ export function GuestPaymentForm({
             onClick={onCancel}
             disabled={isProcessing}
           >
-            Zrušiť
+            {tCommon('cancel')}
           </Button>
           <Button
             type="submit"
@@ -316,15 +324,15 @@ export function GuestPaymentForm({
             disabled={!stripe || isProcessing}
           >
             {isProcessing ? (
-              'Spracovávam...'
+              t('paymentForm.processing')
             ) : (
-              `Autorizovať ${preAuthAmount.toFixed(2)} EUR`
+              t('paymentForm.authorize', { amount: formattedPreAuth })
             )}
           </Button>
         </div>
 
         <p className="text-xs text-center text-[var(--text-muted)] mt-4">
-          🔒 Platobné údaje sú spracované bezpečne cez Stripe
+          🔒 {tPayment('securedByStripe')}
         </p>
       </form>
     </div>

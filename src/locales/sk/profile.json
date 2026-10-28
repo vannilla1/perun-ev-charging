@@ -17,5 +17,21 @@
   "memberSince": "Členom od",
   "addPaymentMethod": "Pridať platobnú metódu",
   "defaultPayment": "Predvolená metóda",
-  "deleteAccount": "Zmazať účet"
+  "deleteAccount": "Zmazať účet",
+  "loading": "Načítavam profil...",
+  "signInPrompt": {
+    "title": "Prihláste sa",
+    "description": "Pre zobrazenie profilu a histórie nabíjaní sa musíte prihlásiť",
+    "signIn": "Prihlásiť sa",
+    "createAccount": "Vytvoriť účet"
+  },
+  "edit": {
+    "email": "E-mail",
+    "emailReadonly": "E-mail nie je možné zmeniť",
+    "firstName": "Meno",
+    "lastName": "Priezvisko",
+    "phone": "Telefón",
+    "phonePlaceholder": "+421 900 000 000",
+    "saved": "Údaje boli uložené"
+  }
 }
