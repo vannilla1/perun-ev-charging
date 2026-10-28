@@ -1,0 +1,24 @@
+{
+  "paymentForm": {
+    "pricePerKwh": "Price per kWh",
+    "preAuthTitle": "Pre-authorization",
+    "preAuthInfo": "A hold of <strong>{amount}</strong> will be placed on your card. When charging is finished, only the actual amount will be charged.",
+    "orPayByCard": "or pay by card",
+    "email": "Email (for confirmation)",
+    "emailPlaceholder": "you@example.com",
+    "processing": "Processing...",
+    "authorize": "Authorize {amount}",
+    "walletLabel": "Charging – {station}"
+  },
+  "validation": {
+    "emailRequired": "Email is required",
+    "emailInvalid": "Invalid email format"
+  },
+  "errors": {
+    "paymentFailed": "Payment failed",
+    "verificationFailed": "Verification failed",
+    "formLoadError": "Couldn't load the form",
+    "generic": "Something went wrong with the payment",
+    "authorizationFailed": "Couldn't authorize the payment. Please try again."
+  }
+}

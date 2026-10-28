@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 import Stripe from 'stripe';
 import { getAuthenticatedUser } from '@/lib/services/authHelper';
 import {
@@ -16,17 +17,18 @@ const stripe = process.env.STRIPE_SECRET_KEY
 // Bezpečnosť: customerId sa NIKDY nepreberá od klienta — odvodzuje sa zo
 // session používateľa (IDOR ochrana: cudzie customerId = 403).
 export async function GET(request: NextRequest) {
+  const t = await getTranslations('api');
   try {
     if (!stripe) {
       return NextResponse.json(
-        { error: 'Stripe nie je nakonfigurovaný', methods: [] },
+        { error: t('payments.stripeNotConfigured'), methods: [] },
         { status: 200 }
       );
     }
 
     const user = await getAuthenticatedUser(request.headers.get('authorization'));
     if (!user) {
-      return NextResponse.json({ error: 'Neautorizovaný prístup' }, { status: 401 });
+      return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 });
     }
 
     const ownCustomerId = await resolveOwnStripeCustomerId(stripe, user);
@@ -39,7 +41,7 @@ export async function GET(request: NextRequest) {
     const requestedCustomerId = new URL(request.url).searchParams.get('customerId');
     if (requestedCustomerId && requestedCustomerId !== ownCustomerId) {
       return NextResponse.json(
-        { error: 'Prístup k cudziemu zákazníkovi nie je povolený' },
+        { error: t('payments.foreignCustomer') },
         { status: 403 }
       );
     }
@@ -71,13 +73,13 @@ export async function GET(request: NextRequest) {
 
     if (error instanceof Stripe.errors.StripeError) {
       return NextResponse.json(
-        { error: error.message },
+        { error: t('payments.loadMethodsFailed') },
         { status: error.statusCode || 500 }
       );
     }
 
     return NextResponse.json(
-      { error: 'Nepodarilo sa získať platobné metódy' },
+      { error: t('payments.loadMethodsFailed') },
       { status: 500 }
     );
   }
@@ -86,17 +88,18 @@ export async function GET(request: NextRequest) {
 // DELETE /api/payments/methods
 // Odstránenie platobnej metódy — len vlastnej (overenie väzby na customera).
 export async function DELETE(request: NextRequest) {
+  const t = await getTranslations('api');
   try {
     if (!stripe) {
       return NextResponse.json(
-        { error: 'Stripe nie je nakonfigurovaný' },
+        { error: t('payments.stripeNotConfigured') },
         { status: 503 }
       );
     }
 
     const user = await getAuthenticatedUser(request.headers.get('authorization'));
     if (!user) {
-      return NextResponse.json({ error: 'Neautorizovaný prístup' }, { status: 401 });
+      return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 });
     }
 
     const body = await request.json();
@@ -104,7 +107,7 @@ export async function DELETE(request: NextRequest) {
 
     if (!paymentMethodId) {
       return NextResponse.json(
-        { error: 'Payment method ID je povinné' },
+        { error: t('payments.paymentMethodIdRequired') },
         { status: 400 }
       );
     }
@@ -115,7 +118,7 @@ export async function DELETE(request: NextRequest) {
       !(await paymentMethodBelongsToCustomer(stripe, paymentMethodId, ownCustomerId))
     ) {
       return NextResponse.json(
-        { error: 'Platobná metóda nepatrí prihlásenému používateľovi' },
+        { error: t('payments.paymentMethodNotOwned') },
         { status: 403 }
       );
     }
@@ -128,13 +131,13 @@ export async function DELETE(request: NextRequest) {
 
     if (error instanceof Stripe.errors.StripeError) {
       return NextResponse.json(
-        { error: error.message },
+        { error: t('payments.deleteMethodFailed') },
         { status: error.statusCode || 500 }
       );
     }
 
     return NextResponse.json(
-      { error: 'Nepodarilo sa odstrániť platobnú metódu' },
+      { error: t('payments.deleteMethodFailed') },
       { status: 500 }
     );
   }

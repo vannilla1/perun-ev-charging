@@ -12,7 +12,8 @@
     "lint": "eslint",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "check:i18n": "node scripts/check-i18n.mjs"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^5.6.0",

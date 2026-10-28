@@ -16,10 +16,37 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock next-intl
-vi.mock('next-intl', () => ({
-  useTranslations: () => (key: string) => key,
-  useLocale: () => 'sk',
-}));
+vi.mock('next-intl', () => {
+  const t = Object.assign((key: string) => key, {
+    rich: (key: string) => key,
+    markup: (key: string) => key,
+    raw: (key: string) => key,
+    has: () => true,
+  });
+  const intl = { locale: 'sk-SK', timeZone: 'Europe/Bratislava' };
+  const format = {
+    number: (value: number, options?: Intl.NumberFormatOptions) =>
+      new Intl.NumberFormat(intl.locale, options).format(value),
+    dateTime: (value: Date | number, options?: Intl.DateTimeFormatOptions) =>
+      new Intl.DateTimeFormat(intl.locale, { timeZone: intl.timeZone, ...options }).format(value),
+    dateTimeRange: (start: Date | number, end: Date | number, options?: Intl.DateTimeFormatOptions) =>
+      new Intl.DateTimeFormat(intl.locale, { timeZone: intl.timeZone, ...options }).formatRange(start, end),
+    relativeTime: (value: Date | number, now: Date | number = Date.now()) => {
+      const seconds = Math.round((new Date(value).getTime() - new Date(now).getTime()) / 1000);
+      return new Intl.RelativeTimeFormat(intl.locale, { numeric: 'auto' }).format(seconds, 'second');
+    },
+    list: (value: Iterable<string>, options?: Intl.ListFormatOptions) =>
+      new Intl.ListFormat(intl.locale, options).format(value),
+  };
+  return {
+    useTranslations: () => t,
+    useFormatter: () => format,
+    useLocale: () => 'sk',
+    useTimeZone: () => intl.timeZone,
+    useNow: () => new Date(),
+    NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
 
 // Mock localStorage
 const localStorageMock = {

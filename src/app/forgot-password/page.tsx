@@ -4,9 +4,12 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { EmailIcon, BackIcon, CheckIcon } from '@/components/Common';
 
 export default function ForgotPasswordPage() {
+  const t = useTranslations('auth');
+  const tCommon = useTranslations('common');
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -18,12 +21,12 @@ export default function ForgotPasswordPage() {
     setError(null);
 
     if (!email.trim()) {
-      setError('Zadajte e-mailovú adresu');
+      setError(t('validation.emailRequired'));
       return;
     }
 
     if (!email.includes('@')) {
-      setError('Neplatná e-mailová adresa');
+      setError(t('validation.emailInvalid'));
       return;
     }
 
@@ -41,12 +44,16 @@ export default function ForgotPasswordPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Nepodarilo sa odoslať žiadosť');
+        throw new Error(data.error || t('forgotPasswordPage.failed'));
       }
 
       setIsSubmitted(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Nepodarilo sa odoslať žiadosť');
+      setError(
+        err instanceof Error && !(err instanceof TypeError) && !(err instanceof SyntaxError)
+          ? err.message
+          : t('forgotPasswordPage.failed')
+      );
     } finally {
       setIsLoading(false);
     }
@@ -58,6 +65,7 @@ export default function ForgotPasswordPage() {
         <div style={{ padding: '24px 16px 0 16px' }}>
           <button
             onClick={() => router.push('/login')}
+            aria-label={tCommon('back')}
             className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-full hover:bg-[var(--surface-secondary)] transition-colors flex items-center justify-center"
             style={{ width: '44px', height: '44px' }}
           >
@@ -78,16 +86,16 @@ export default function ForgotPasswordPage() {
                 <CheckIcon />
               </div>
               <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]" style={{ marginBottom: '12px' }}>
-                Email odoslaný
+                {t('forgotPasswordPage.sentTitle')}
               </h1>
               <p className="text-sm sm:text-base text-[var(--text-secondary)]" style={{ marginBottom: '32px' }}>
-                Ak existuje účet s emailom <strong>{email}</strong>, poslali sme vám inštrukcie na obnovenie hesla.
+                {t.rich('forgotPasswordPage.sentBody', { email, strong: (chunks) => <strong>{chunks}</strong> })}
               </p>
               <button
                 onClick={() => router.push('/login')}
                 className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-[var(--perun-blue)] to-[var(--perun-blue-dark)] text-white rounded-xl sm:rounded-2xl text-sm sm:text-base font-semibold shadow-lg hover:shadow-xl transition-all"
               >
-                Späť na prihlásenie
+                {t('forgotPasswordPage.backToLogin')}
               </button>
             </div>
 
@@ -95,13 +103,16 @@ export default function ForgotPasswordPage() {
               className="text-sm text-[var(--text-muted)]"
               style={{ marginTop: '24px' }}
             >
-              Neprišiel email? Skontrolujte spam alebo{' '}
-              <button
-                onClick={() => setIsSubmitted(false)}
-                className="text-[var(--perun-blue)] font-medium hover:text-[var(--perun-blue-dark)] transition-colors"
-              >
-                skúste znova
-              </button>
+              {t.rich('forgotPasswordPage.notReceived', {
+                retry: (chunks) => (
+                  <button
+                    onClick={() => setIsSubmitted(false)}
+                    className="text-[var(--perun-blue)] font-medium hover:text-[var(--perun-blue-dark)] transition-colors"
+                  >
+                    {chunks}
+                  </button>
+                ),
+              })}
             </p>
           </div>
         </div>
@@ -117,6 +128,7 @@ export default function ForgotPasswordPage() {
       <div style={{ padding: '24px 16px 0 16px' }}>
         <button
           onClick={() => router.back()}
+          aria-label={tCommon('back')}
           className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-full hover:bg-[var(--surface-secondary)] transition-colors flex items-center justify-center"
           style={{ width: '44px', height: '44px' }}
         >
@@ -142,10 +154,10 @@ export default function ForgotPasswordPage() {
             priority
           />
           <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]" style={{ marginBottom: '8px' }}>
-            Zabudnuté heslo
+            {t('forgotPasswordPage.title')}
           </h1>
           <p className="text-sm sm:text-base text-[var(--text-secondary)]">
-            Zadajte email a pošleme vám inštrukcie
+            {t('forgotPasswordPage.subtitle')}
           </p>
         </div>
 
@@ -165,7 +177,7 @@ export default function ForgotPasswordPage() {
               {/* Email Input */}
               <div>
                 <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5 sm:mb-2">
-                  E-mailová adresa
+                  {t('forgotPasswordPage.emailLabel')}
                 </label>
                 <div className="relative">
                   <div
@@ -176,7 +188,7 @@ export default function ForgotPasswordPage() {
                   </div>
                   <input
                     type="email"
-                    placeholder="vas@email.sk"
+                    placeholder={t('emailPlaceholder')}
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
@@ -202,10 +214,10 @@ export default function ForgotPasswordPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>Odosielam...</span>
+                    <span>{t('forgotPasswordPage.submitting')}</span>
                   </>
                 ) : (
-                  'Obnoviť heslo'
+                  t('forgotPasswordPage.submit')
                 )}
               </button>
             </form>
@@ -216,9 +228,9 @@ export default function ForgotPasswordPage() {
             className="text-center text-sm sm:text-base text-[var(--text-secondary)]"
             style={{ marginTop: '32px' }}
           >
-            Spomenuli ste si?{' '}
+            {t('forgotPasswordPage.remembered')}{' '}
             <Link href="/login" className="text-[var(--perun-blue)] font-semibold hover:text-[var(--perun-blue-dark)] transition-colors">
-              Prihlásiť sa
+              {t('login')}
             </Link>
           </p>
         </div>

@@ -1,0 +1,105 @@
+{
+  "scanQr": "Scan QR code",
+  "scanInstructions": "Point your camera at the QR code on the charging station",
+  "orEnterCode": "Or enter the code manually",
+  "enterCode": "Enter station code",
+  "startCharging": "Start charging",
+  "stopCharging": "Stop charging",
+  "chargingInProgress": "Charging in progress",
+  "chargingComplete": "Charging complete",
+  "currentPower": "Current power",
+  "energyDelivered": "Energy delivered",
+  "duration": "Duration",
+  "estimatedCost": "Estimated cost",
+  "finalCost": "Total cost",
+  "connectCable": "Connect the cable",
+  "waitingForVehicle": "Waiting for vehicle",
+  "preparingSession": "Preparing session",
+  "or": "or",
+  "pickOnMap": "Choose a station on the map",
+  "stationFallback": "Charging station",
+  "unknownStation": "Unknown station",
+  "selectConnector": "Select a connector:",
+  "connectorNumber": "Connector {number}",
+  "connectorState": {
+    "available": "Available",
+    "occupied": "Occupied",
+    "unavailable": "Unavailable"
+  },
+  "stationState": {
+    "available": "Available",
+    "occupied": "Occupied",
+    "unavailable": "Unavailable",
+    "faulted": "Out of order",
+    "charging": "Charging in progress",
+    "preparing": "Preparing",
+    "finishing": "Finishing",
+    "reserved": "Reserved",
+    "unknown": "Unknown status"
+  },
+  "scanQrCode": "Scan QR code",
+  "loadingStation": "Loading station...",
+  "pleaseWait": "Please wait",
+  "maxPower": "Maximum power",
+  "connectorType": "Connector type",
+  "yourEnergyPrice": "Your energy price",
+  "publicPrice": "Public price",
+  "energyPrice": "Energy price",
+  "timePrice": "Time-based price",
+  "pricePerKwhLabel": "Price per kWh",
+  "perKwh": "{price}/kWh",
+  "perHour": "{price}/h",
+  "free": "Free",
+  "chargeAsGuest": "Charge without an account",
+  "signIn": "Sign in",
+  "stationUnavailable": "The station is currently unavailable. Please try again later.",
+  "payment": {
+    "title": "Payment for charging",
+    "preAuthTitle": "Pre-authorization",
+    "preAuthText": "A hold of <strong>{amount}</strong> will be placed on your card. After charging, only the actual amount will be charged.",
+    "emailLabel": "Your email (for the receipt)",
+    "emailPlaceholder": "you@example.com",
+    "continue": "Continue to payment"
+  },
+  "authorizing": {
+    "title": "Authorizing payment...",
+    "text": "Please wait while we verify your payment card"
+  },
+  "starting": {
+    "title": "Starting charging...",
+    "text": "Connect the cable to your vehicle",
+    "paymentAuthorized": "Payment authorized: {amount}"
+  },
+  "guestBanner": "Pre-authorization: {amount} | Only the actual amount will be charged after charging",
+  "stopping": {
+    "title": "Stopping charging...",
+    "capturing": "Capturing payment of {amount}"
+  },
+  "receiptSent": "Receipt sent to: {email}",
+  "newSession": "New charging session",
+  "durationValue": {
+    "hoursMinutes": "{hours} h {minutes} min",
+    "minutesSeconds": "{minutes} min {seconds} s",
+    "seconds": "{seconds} s"
+  },
+  "titles": {
+    "connectorSelect": "Select connector",
+    "stationInfo": "Charging station",
+    "payment": "Payment",
+    "starting": "Starting charging",
+    "charging": "Charging",
+    "completed": "Completed"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "stationInfoFailed": "Could not load station information",
+    "connectorsFailed": "Could not load connectors",
+    "stationFailed": "Could not load the station",
+    "startFailed": "Could not start charging",
+    "stopFailed": "Could not stop charging",
+    "preAuthFailed": "Could not create the pre-authorization",
+    "missingStartData": "Missing details needed to start charging",
+    "invalidQr": "Invalid QR code. Content: “{data}”",
+    "codeTooShort": "The code must be at least 4 characters long"
+  }
+}

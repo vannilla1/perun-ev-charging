@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 import Stripe from 'stripe';
 import { requireAuth } from '@/lib/services/authHelper';
 
@@ -13,16 +14,17 @@ const DEFAULT_PREAUTH_AMOUNT = parseFloat(process.env.DEFAULT_PREAUTH_AMOUNT || 
 // POST /api/payments/preauth
 // Vytvorenie PaymentIntent s predautorizáciou (capture_method: 'manual')
 export async function POST(request: NextRequest) {
+  const t = await getTranslations('api');
   try {
     // Auth kontrola
     const userId = await requireAuth(request.headers.get('authorization'));
     if (!userId) {
-      return NextResponse.json({ error: 'Nie ste prihlásený' }, { status: 401 });
+      return NextResponse.json({ error: t('common.notSignedIn') }, { status: 401 });
     }
 
     if (!stripe) {
       return NextResponse.json(
-        { error: 'Stripe nie je nakonfigurovaný' },
+        { error: t('payments.stripeNotConfigured') },
         { status: 503 }
       );
     }
@@ -38,14 +40,14 @@ export async function POST(request: NextRequest) {
 
     if (!email) {
       return NextResponse.json(
-        { error: 'Email je povinný' },
+        { error: t('common.emailRequired') },
         { status: 400 }
       );
     }
 
     if (!stationId) {
       return NextResponse.json(
-        { error: 'ID stanice je povinné' },
+        { error: t('common.stationIdRequired') },
         { status: 400 }
       );
     }
@@ -92,7 +94,7 @@ export async function POST(request: NextRequest) {
         stationName: stationName || '',
         preAuthAmount: amount.toString(),
       },
-      description: `EV nabíjanie - ${stationName || stationId}`,
+      description: t('payments.preauthDescription', { station: stationName || stationId }),
       receipt_email: email,
     });
 
@@ -109,13 +111,13 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof Stripe.errors.StripeError) {
       return NextResponse.json(
-        { error: error.message },
+        { error: t('payments.preauthFailed') },
         { status: error.statusCode || 500 }
       );
     }
 
     return NextResponse.json(
-      { error: 'Nepodarilo sa vytvoriť predautorizáciu' },
+      { error: t('payments.preauthFailed') },
       { status: 500 }
     );
   }

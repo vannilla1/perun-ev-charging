@@ -1,0 +1,61 @@
+{
+  "loading": "Loading...",
+  "error": "Error",
+  "retry": "Try again",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "save": "Save",
+  "delete": "Delete",
+  "edit": "Edit",
+  "back": "Back",
+  "next": "Next",
+  "close": "Close",
+  "search": "Search",
+  "noResults": "No results",
+  "seeAll": "See all",
+  "refresh": "Refresh",
+  "saving": "Saving...",
+  "saveChanges": "Save changes",
+  "sending": "Sending...",
+  "submit": "Submit",
+  "continue": "Continue",
+  "done": "Done",
+  "add": "Add",
+  "remove": "Remove",
+  "yes": "Yes",
+  "no": "No",
+  "ok": "OK",
+  "or": "or",
+  "optional": "Optional",
+  "required": "Required",
+  "backToHome": "Back to home",
+  "showPassword": "Show password",
+  "hidePassword": "Hide password",
+  "language": {
+    "label": "Language",
+    "change": "Change language"
+  },
+  "pushNotifications": {
+    "chargingStarted": {
+      "title": "Charging started ⚡",
+      "body": "Your vehicle is charging at station {station}"
+    },
+    "chargingCompleted": {
+      "title": "Charging complete ✅",
+      "body": "Charged {energy, number, ::.0} kWh for {cost, number, ::currency/EUR}",
+      "view": "View details",
+      "dismiss": "Dismiss"
+    },
+    "chargingError": {
+      "title": "Charging error ⚠️"
+    },
+    "disconnectReminder": {
+      "title": "Unplug your vehicle 🔌",
+      "body": "Charging at station {station} is complete. Please unplug your vehicle."
+    },
+    "lowBattery": {
+      "title": "Low battery 🔋",
+      "body": "Battery level: {percentage}%. We recommend finding a charging station."
+    }
+  }
+}

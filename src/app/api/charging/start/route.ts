@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 import { getSmartmeAuth } from '@/lib/services/authHelper';
 import { getEcarupAccessToken, ECARUP_API_BASE } from '@/lib/services/ecarupAuth';
 import {
@@ -12,12 +13,13 @@ import {
 
 // POST /api/charging/start
 export async function POST(request: NextRequest) {
+  const t = await getTranslations('api');
   try {
     const body = await request.json();
     const { stationId, connectorId, originalUrl } = body;
 
     if (!stationId) {
-      return NextResponse.json({ error: 'ID stanice je povinné' }, { status: 400 });
+      return NextResponse.json({ error: t('common.stationIdRequired') }, { status: 400 });
     }
 
     // eCarUp redirect fallback
@@ -25,14 +27,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         redirectUrl: originalUrl,
-        message: 'Presmerovanie na eCarUp platobný portál',
+        message: t('common.redirectToEcarup'),
       });
     }
 
     // 1. Získať eCarUp OAuth token pre informácie o stanici
     const accessToken = await getEcarupAccessToken();
     if (!accessToken) {
-      return NextResponse.json({ error: 'Nepodarilo sa autentifikovať s API' }, { status: 401 });
+      return NextResponse.json({ error: t('common.apiAuthFailed') }, { status: 401 });
     }
 
     // 2. Získať detail stanice z eCarUp
@@ -52,10 +54,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           redirectUrl: originalUrl,
-          message: 'Stanica nebola nájdená, presmerovanie na eCarUp.',
+          message: t('charging.stationNotFoundRedirect'),
         });
       }
-      return NextResponse.json({ error: 'Stanica nebola nájdená' }, { status: 404 });
+      return NextResponse.json({ error: t('common.stationNotFound') }, { status: 404 });
     }
 
     const stationData = await stationResponse.json();
@@ -64,7 +66,7 @@ export async function POST(request: NextRequest) {
       : stationData.connectors?.[0];
 
     if (!connector) {
-      return NextResponse.json({ error: 'Konektor nebol nájdený' }, { status: 404 });
+      return NextResponse.json({ error: t('common.connectorNotFound') }, { status: 404 });
     }
 
     // 3. Pokúsiť sa o reálne spustenie cez smart-me API
@@ -99,7 +101,7 @@ export async function POST(request: NextRequest) {
               picoDeviceId: picoDevice.id,
               connectorId: connector.id,
               status: 'charging',
-              message: 'Nabíjanie už prebieha na tejto stanici.',
+              message: t('charging.alreadyCharging'),
               station: {
                 name: stationData.name,
                 address: [stationData.street, stationData.city].filter(Boolean).join(', '),
@@ -118,7 +120,7 @@ export async function POST(request: NextRequest) {
           // Stav 7 = offline
           if (state === 7) {
             return NextResponse.json({
-              error: 'Nabíjačka je offline',
+              error: t('charging.chargerOffline'),
               picoState: stateName,
             }, { status: 503 });
           }
@@ -126,7 +128,7 @@ export async function POST(request: NextRequest) {
           // Stav 1 = čaká na auto (kábel nie je pripojený)
           if (state === 1) {
             return NextResponse.json({
-              error: 'Pripojte najprv nabíjací kábel k vozidlu',
+              error: t('charging.plugInCable'),
               picoState: stateName,
               picoDeviceId: picoDevice.id,
             }, { status: 409 });
@@ -164,7 +166,7 @@ export async function POST(request: NextRequest) {
               picoDeviceId: picoDevice.id,
               connectorId: connector.id,
               status: 'starting',
-              message: 'Nabíjanie sa spúšťa...',
+              message: t('charging.starting'),
               station: {
                 name: stationData.name,
                 address: [stationData.street, stationData.city].filter(Boolean).join(', '),
@@ -184,7 +186,7 @@ export async function POST(request: NextRequest) {
               picoDeviceId: picoDevice.id,
               connectorId: connector.id,
               status: 'starting',
-              message: 'Nabíjačka čaká na pripojenie vozidla.',
+              message: t('charging.waitingForVehicle'),
               station: {
                 name: stationData.name,
                 address: [stationData.street, stationData.city].filter(Boolean).join(', '),
@@ -216,8 +218,8 @@ export async function POST(request: NextRequest) {
       connectorId: connector.id,
       status: 'pending_authorization',
       message: smartmeAuth
-        ? 'Nepodarilo sa nájsť nabíjačku v smart-me. Pripojte kábel a autorizujte na stanici.'
-        : 'Prihláste sa pre vzdialené spustenie nabíjania, alebo autorizujte priamo na stanici.',
+        ? t('charging.chargerNotFound')
+        : t('charging.signInForRemoteStart'),
       station: {
         name: stationData.name,
         address: [stationData.street, stationData.city].filter(Boolean).join(', '),
@@ -229,6 +231,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Start charging error:', error);
-    return NextResponse.json({ error: 'Nepodarilo sa spustiť nabíjanie' }, { status: 500 });
+    return NextResponse.json({ error: t('charging.startFailed') }, { status: 500 });
   }
 }

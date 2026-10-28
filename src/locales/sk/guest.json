@@ -1,0 +1,24 @@
+{
+  "paymentForm": {
+    "pricePerKwh": "Cena za kWh",
+    "preAuthTitle": "Predautorizácia",
+    "preAuthInfo": "Na vašej karte bude dočasne zablokovaná suma <strong>{amount}</strong>. Po ukončení nabíjania bude strhnutá len skutočná suma.",
+    "orPayByCard": "alebo platobnou kartou",
+    "email": "E-mail (pre potvrdenie)",
+    "emailPlaceholder": "vas@email.sk",
+    "processing": "Spracúvam...",
+    "authorize": "Autorizovať {amount}",
+    "walletLabel": "Nabíjanie – {station}"
+  },
+  "validation": {
+    "emailRequired": "E-mail je povinný",
+    "emailInvalid": "Neplatný formát e-mailu"
+  },
+  "errors": {
+    "paymentFailed": "Platba zlyhala",
+    "verificationFailed": "Overenie zlyhalo",
+    "formLoadError": "Formulár sa nepodarilo načítať",
+    "generic": "Pri platbe nastala chyba",
+    "authorizationFailed": "Nepodarilo sa autorizovať platbu. Skúste to znova."
+  }
+}

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { AppLayout, PageHeader } from '@/components/Layout';
 import { Card, CardContent, Button } from '@/components/Common';
 import { useAuth } from '@/contexts';
@@ -94,8 +95,10 @@ interface PaymentMethod {
 const mockPaymentMethods: PaymentMethod[] = [];
 
 export default function PaymentMethodsPage() {
+  const t = useTranslations('payment');
+  const tCommon = useTranslations('common');
   const router = useRouter();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, isReady } = useAuth();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(mockPaymentMethods);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -119,10 +122,10 @@ export default function PaymentMethodsPage() {
 
   // Redirect ak nie je prihlásený
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (isReady && !isLoggedIn) {
       router.push('/login');
     }
-  }, [isLoggedIn, router]);
+  }, [isReady, isLoggedIn, router]);
 
   const getCardIcon = (type: PaymentMethod['type']) => {
     switch (type.toLowerCase()) {
@@ -205,7 +208,7 @@ export default function PaymentMethodsPage() {
 
   return (
     <AppLayout
-      header={<PageHeader title="Platobné metódy" showBack />}
+      header={<PageHeader title={t('title')} showBack />}
     >
       <div
         className="max-w-lg mx-auto"
@@ -218,7 +221,7 @@ export default function PaymentMethodsPage() {
         {!isLoading && paymentMethods.length > 0 && (
           <div style={{ marginBottom: '24px' }}>
             <h2 className="text-sm font-medium text-[var(--text-secondary)]" style={{ marginBottom: '12px' }}>
-              Uložené platobné metódy
+              {t('settings.saved')}
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {paymentMethods.map(method => (
@@ -234,7 +237,7 @@ export default function PaymentMethodsPage() {
                           </p>
                           {method.expiryMonth && method.expiryYear && (
                             <p className="text-sm text-[var(--text-secondary)]">
-                              Platná do {method.expiryMonth.toString().padStart(2, '0')}/{method.expiryYear}
+                              {t('card.validUntil', { date: `${method.expiryMonth.toString().padStart(2, '0')}/${method.expiryYear}` })}
                             </p>
                           )}
                         </div>
@@ -242,7 +245,7 @@ export default function PaymentMethodsPage() {
                       <div className="flex items-center gap-2">
                         {method.isDefault && (
                           <span className="text-xs bg-[var(--perun-green)] text-white px-2 py-1 rounded-full">
-                            Predvolená
+                            {t('card.default')}
                           </span>
                         )}
                         {!method.isDefault && (
@@ -250,12 +253,13 @@ export default function PaymentMethodsPage() {
                             onClick={() => handleSetDefault(method.id)}
                             className="text-sm text-[var(--perun-blue)] hover:underline"
                           >
-                            Nastaviť
+                            {t('card.setDefaultShort')}
                           </button>
                         )}
                         <button
                           onClick={() => handleDelete(method.id)}
                           disabled={isDeleting === method.id}
+                          aria-label={t('card.remove')}
                           className="p-2 text-[var(--text-muted)] hover:text-[var(--error)] transition-colors disabled:opacity-50"
                         >
                           {isDeleting === method.id ? (
@@ -280,10 +284,10 @@ export default function PaymentMethodsPage() {
               <CreditCardIcon />
             </div>
             <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">
-              Žiadne platobné metódy
+              {t('empty.title')}
             </h3>
             <p className="text-sm text-[var(--text-secondary)]">
-              Pridajte platobnú metódu pre rýchle a bezpečné platby za nabíjanie.
+              {t('settings.emptyDescription')}
             </p>
           </div>
         )}
@@ -292,7 +296,7 @@ export default function PaymentMethodsPage() {
         {!isLoading && (
           <div style={{ marginBottom: '32px' }}>
             <h2 className="text-sm font-medium text-[var(--text-secondary)]" style={{ marginBottom: '12px' }}>
-              Pridať platobnú metódu
+              {t('settings.add')}
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <button
@@ -303,13 +307,13 @@ export default function PaymentMethodsPage() {
                   <div className="w-12 h-8 rounded bg-[var(--surface-secondary)] flex items-center justify-center text-[var(--text-muted)]">
                     <CreditCardIcon />
                   </div>
-                  <span className="font-medium text-[var(--text-primary)]">Kreditná/Debetná karta</span>
+                  <span className="font-medium text-[var(--text-primary)]">{t('settings.creditDebitCard')}</span>
                 </div>
                 <PlusIcon />
               </button>
 
               <button
-                onClick={() => alert('Apple Pay bude čoskoro dostupný')}
+                onClick={() => alert(t('settings.comingSoonAlert', { method: 'Apple Pay' }))}
                 className="flex items-center justify-between p-4 bg-white border-2 border-[var(--border)] rounded-xl hover:border-[var(--perun-blue)] transition-colors opacity-50"
                 disabled
               >
@@ -317,14 +321,14 @@ export default function PaymentMethodsPage() {
                   <ApplePayIcon />
                   <div className="text-left">
                     <span className="font-medium text-[var(--text-primary)]">Apple Pay</span>
-                    <p className="text-xs text-[var(--text-muted)]">Čoskoro</p>
+                    <p className="text-xs text-[var(--text-muted)]">{t('settings.comingSoon')}</p>
                   </div>
                 </div>
                 <PlusIcon />
               </button>
 
               <button
-                onClick={() => alert('Google Pay bude čoskoro dostupný')}
+                onClick={() => alert(t('settings.comingSoonAlert', { method: 'Google Pay' }))}
                 className="flex items-center justify-between p-4 bg-white border-2 border-[var(--border)] rounded-xl hover:border-[var(--perun-blue)] transition-colors opacity-50"
                 disabled
               >
@@ -332,7 +336,7 @@ export default function PaymentMethodsPage() {
                   <GooglePayIcon />
                   <div className="text-left">
                     <span className="font-medium text-[var(--text-primary)]">Google Pay</span>
-                    <p className="text-xs text-[var(--text-muted)]">Čoskoro</p>
+                    <p className="text-xs text-[var(--text-muted)]">{t('settings.comingSoon')}</p>
                   </div>
                 </div>
                 <PlusIcon />
@@ -344,28 +348,28 @@ export default function PaymentMethodsPage() {
         {/* Info */}
         <div className="p-4 bg-[var(--surface-secondary)] rounded-xl">
           <p className="text-sm text-[var(--text-secondary)]">
-            🔒 Vaše platobné údaje sú bezpečne šifrované. Kompletné čísla kariet nikdy neukladáme na našich serveroch.
+            🔒 {t('settings.securityNote')}
           </p>
         </div>
 
         {/* Ako to funguje */}
         <div style={{ marginTop: '24px' }}>
           <h3 className="text-sm font-medium text-[var(--text-secondary)] mb-3">
-            Ako platby fungujú
+            {t('settings.howItWorks.title')}
           </h3>
           <div className="p-4 bg-white rounded-xl border border-[var(--border)]">
             <ul className="text-sm text-[var(--text-secondary)] space-y-2">
               <li className="flex items-start gap-2">
                 <span className="text-[var(--perun-green)]">✓</span>
-                Po dokončení nabíjania sa suma automaticky stiahne z vašej karty
+                {t('settings.howItWorks.autoCharge')}
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-[var(--perun-green)]">✓</span>
-                Platobné údaje sú spracované certifikovaným poskytovateľom
+                {t('settings.howItWorks.certifiedProvider')}
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-[var(--perun-green)]">✓</span>
-                Históriu platieb nájdete v sekcii &quot;História&quot;
+                {t('settings.howItWorks.history')}
               </li>
             </ul>
           </div>
@@ -376,10 +380,10 @@ export default function PaymentMethodsPage() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-md p-6">
               <h3 className="text-xl font-bold text-[var(--text-primary)] mb-2">
-                Pridať platobnú kartu
+                {t('settings.addModal.title')}
               </h3>
               <p className="text-[var(--text-secondary)] mb-6">
-                Budete presmerovaný na zabezpečený platobný formulár.
+                {t('settings.addModal.redirect')}
               </p>
 
               {/* Info o bezpečnosti */}
@@ -388,10 +392,10 @@ export default function PaymentMethodsPage() {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[var(--perun-green)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
-                  <span className="font-medium text-[var(--text-primary)]">Bezpečná platba</span>
+                  <span className="font-medium text-[var(--text-primary)]">{t('settings.addModal.securePayment')}</span>
                 </div>
                 <p className="text-sm text-[var(--text-secondary)]">
-                  Vaše údaje sú šifrované 256-bitovým SSL šifrovaním.
+                  {t('settings.addModal.encryption')}
                 </p>
               </div>
 
@@ -408,13 +412,13 @@ export default function PaymentMethodsPage() {
                   fullWidth
                   onClick={() => setShowAddModal(false)}
                 >
-                  Zrušiť
+                  {tCommon('cancel')}
                 </Button>
                 <Button
                   fullWidth
                   onClick={handleAddCardConfirm}
                 >
-                  Pokračovať
+                  {t('settings.addModal.continue')}
                 </Button>
               </div>
             </div>

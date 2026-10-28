@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 import { getEcarupAccessToken, ECARUP_API_BASE } from '@/lib/services/ecarupAuth';
 
 // Fetch jednej stanice a vrátiť konektory
@@ -44,13 +45,14 @@ async function fetchStationConnectors(
 // GET /api/charging/station-connectors?stationId=X
 // Podporuje zlúčené L/P stanice (formát "uuid1_uuid2") — fetchne obe a skombinuje konektory
 export async function GET(request: NextRequest) {
+  const t = await getTranslations('api');
   try {
     const { searchParams } = new URL(request.url);
     const stationId = searchParams.get('stationId');
 
     if (!stationId) {
       return NextResponse.json(
-        { error: 'stationId query parameter is required' },
+        { error: t('charging.stationIdParamRequired') },
         { status: 400 }
       );
     }
@@ -59,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     if (!accessToken) {
       return NextResponse.json(
-        { error: 'Failed to authenticate with API' },
+        { error: t('common.apiAuthFailed') },
         { status: 401 }
       );
     }
@@ -76,7 +78,7 @@ export async function GET(request: NextRequest) {
 
     if (validResults.length === 0) {
       return NextResponse.json(
-        { error: 'Station not found' },
+        { error: t('common.stationNotFound') },
         { status: 404 }
       );
     }
@@ -105,7 +107,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Station connectors error:', error);
     return NextResponse.json(
-      { error: 'Failed to load station connectors' },
+      { error: t('charging.connectorsFailed') },
       { status: 500 }
     );
   }

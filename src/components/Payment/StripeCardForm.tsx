@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   useStripe,
   useElements,
@@ -9,6 +10,7 @@ import {
   CardCvcElement,
 } from '@stripe/react-stripe-js';
 import { Button } from '@/components/Common';
+import { stripeErrorMessage } from './StripeProvider';
 
 interface StripeCardFormProps {
   clientSecret: string;
@@ -35,6 +37,8 @@ const CARD_ELEMENT_OPTIONS = {
 };
 
 export function StripeCardForm({ clientSecret, onSuccess, onCancel }: StripeCardFormProps) {
+  const t = useTranslations('payment');
+  const tCommon = useTranslations('common');
   const stripe = useStripe();
   const elements = useElements();
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +57,7 @@ export function StripeCardForm({ clientSecret, onSuccess, onCancel }: StripeCard
     const cardNumberElement = elements.getElement(CardNumberElement);
 
     if (!cardNumberElement) {
-      setError('Chyba pri načítaní formulára');
+      setError(t('stripeForm.formLoadError'));
       setIsProcessing(false);
       return;
     }
@@ -65,7 +69,7 @@ export function StripeCardForm({ clientSecret, onSuccess, onCancel }: StripeCard
     });
 
     if (stripeError) {
-      setError(stripeError.message || 'Nastala chyba pri ukladaní karty');
+      setError(stripeErrorMessage(stripeError, t('stripeForm.saveError')));
       setIsProcessing(false);
       return;
     }
@@ -73,7 +77,7 @@ export function StripeCardForm({ clientSecret, onSuccess, onCancel }: StripeCard
     if (setupIntent?.status === 'succeeded') {
       onSuccess();
     } else {
-      setError('Nepodarilo sa uložiť kartu. Skúste to znova.');
+      setError(t('stripeForm.saveFailed'));
     }
 
     setIsProcessing(false);
@@ -83,7 +87,7 @@ export function StripeCardForm({ clientSecret, onSuccess, onCancel }: StripeCard
     <form onSubmit={handleSubmit}>
       <div style={{ marginBottom: '20px' }}>
         <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-          Číslo karty
+          {t('card.number')}
         </label>
         <div className="p-3 border border-[var(--border)] rounded-xl bg-white focus-within:border-[var(--perun-blue)] focus-within:ring-2 focus-within:ring-[var(--perun-blue)]/20 transition-all">
           <CardNumberElement options={CARD_ELEMENT_OPTIONS} />
@@ -93,7 +97,7 @@ export function StripeCardForm({ clientSecret, onSuccess, onCancel }: StripeCard
       <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
         <div style={{ flex: 1 }}>
           <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-            Platnosť
+            {t('card.expiry')}
           </label>
           <div className="p-3 border border-[var(--border)] rounded-xl bg-white focus-within:border-[var(--perun-blue)] focus-within:ring-2 focus-within:ring-[var(--perun-blue)]/20 transition-all">
             <CardExpiryElement options={CARD_ELEMENT_OPTIONS} />
@@ -101,7 +105,7 @@ export function StripeCardForm({ clientSecret, onSuccess, onCancel }: StripeCard
         </div>
         <div style={{ flex: 1 }}>
           <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-            CVC
+            {t('card.cvc')}
           </label>
           <div className="p-3 border border-[var(--border)] rounded-xl bg-white focus-within:border-[var(--perun-blue)] focus-within:ring-2 focus-within:ring-[var(--perun-blue)]/20 transition-all">
             <CardCvcElement options={CARD_ELEMENT_OPTIONS} />
@@ -123,19 +127,19 @@ export function StripeCardForm({ clientSecret, onSuccess, onCancel }: StripeCard
           onClick={onCancel}
           disabled={isProcessing}
         >
-          Zrušiť
+          {tCommon('cancel')}
         </Button>
         <Button
           type="submit"
           fullWidth
           disabled={!stripe || isProcessing}
         >
-          {isProcessing ? 'Ukladám...' : 'Uložiť kartu'}
+          {isProcessing ? t('stripeForm.saving') : t('stripeForm.save')}
         </Button>
       </div>
 
       <p className="text-xs text-center text-[var(--text-muted)] mt-4">
-        🔒 Platobné údaje sú spracované bezpečne cez Stripe
+        🔒 {t('securedByStripe')}
       </p>
     </form>
   );

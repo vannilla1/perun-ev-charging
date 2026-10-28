@@ -2,13 +2,14 @@
 
 import React, { Suspense, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useFormatter } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { AppLayout, PageHeader } from '@/components/Layout';
 import { Card, CardContent, Button, Input, QRIcon, BoltIcon, PlugIcon } from '@/components/Common';
 import { useCharging } from '@/hooks';
 import { useAuth } from '@/contexts/AuthContext';
 import { StripeProvider, GuestPaymentForm } from '@/components/Payment';
+import { translateOr } from '@/i18n/dynamic';
 
 // Dynamický import QR skenera (potrebuje prístup k window)
 const QRScanner = dynamic(
@@ -19,6 +20,8 @@ const QRScanner = dynamic(
 
 function ChargingPageContent() {
   const t = useTranslations('charging');
+  const tc = useTranslations('common');
+  const format = useFormatter();
   const { isLoggedIn } = useAuth();
   const searchParams = useSearchParams();
   const [showScanner, setShowScanner] = useState(false);
@@ -70,6 +73,10 @@ function ChargingPageContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fixed = (value: number, digits: number) =>
+    format.number(value, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  const eur = (value: number) => format.number(value, { style: 'currency', currency: 'EUR' });
 
   const handleOpenScanner = () => {
     setShowScanner(true);
@@ -171,7 +178,7 @@ function ChargingPageContent() {
           {/* Divider + Map link */}
           <div className="w-full flex items-center gap-4 my-8">
             <div className="flex-1 h-px bg-[var(--border)]" />
-            <span className="text-sm text-[var(--text-muted)]">alebo</span>
+            <span className="text-sm text-[var(--text-muted)]">{t('or')}</span>
             <div className="flex-1 h-px bg-[var(--border)]" />
           </div>
 
@@ -185,7 +192,7 @@ function ChargingPageContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Vybrať stanicu na mape
+              {t('pickOnMap')}
             </span>
           </Button>
         </>
@@ -198,7 +205,7 @@ function ChargingPageContent() {
       {/* Station name & address */}
       <div className="text-center mb-6">
         <h2 className="text-xl font-bold text-[var(--text-primary)] mb-1">
-          {stationOverview?.name || 'Nabíjacia stanica'}
+          {stationOverview?.name || t('stationFallback')}
         </h2>
         {stationOverview?.address && (
           <p className="text-sm text-[var(--text-secondary)]">
@@ -209,7 +216,7 @@ function ChargingPageContent() {
 
       {/* Connector selection label */}
       <p className="text-sm font-medium text-[var(--text-secondary)] mb-3">
-        Vyberte konektor:
+        {t('selectConnector')}
       </p>
 
       {/* Connector cards */}
@@ -237,10 +244,10 @@ function ChargingPageContent() {
                   />
                   <div>
                     <p className="font-semibold text-[var(--text-primary)]">
-                      {connector.name || `Konektor ${connector.number}`}
+                      {connector.name || t('connectorNumber', { number: connector.number })}
                     </p>
                     <p className="text-sm text-[var(--text-secondary)]">
-                      {connector.plugType}{connector.maxPower ? ` • ${connector.maxPower} kW` : ''}
+                      {connector.plugType}{connector.maxPower ? ` • ${format.number(connector.maxPower)} kW` : ''}
                     </p>
                   </div>
                 </div>
@@ -255,10 +262,10 @@ function ChargingPageContent() {
                   }`}
                 >
                   {isAvailable
-                    ? 'Dostupný'
+                    ? t('connectorState.available')
                     : connector.state === 'OCCUPIED'
-                      ? 'Obsadený'
-                      : 'Nedostupný'}
+                      ? t('connectorState.occupied')
+                      : t('connectorState.unavailable')}
                 </span>
               </div>
             </button>
@@ -269,10 +276,10 @@ function ChargingPageContent() {
       {/* Bottom buttons */}
       <div className="space-y-3">
         <Button onClick={handleNewSession} variant="outline" fullWidth>
-          Skenovať QR kód
+          {t('scanQrCode')}
         </Button>
         <Button onClick={handleNewSession} variant="ghost" fullWidth>
-          Zrušiť
+          {tc('cancel')}
         </Button>
       </div>
     </div>
@@ -286,10 +293,10 @@ function ChargingPageContent() {
         </div>
       </div>
       <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
-        Načítavam stanicu...
+        {t('loadingStation')}
       </h2>
       <p className="text-[var(--text-secondary)]">
-        Prosím počkajte
+        {t('pleaseWait')}
       </p>
     </div>
   );
@@ -313,13 +320,15 @@ function ChargingPageContent() {
             ? 'bg-green-100 text-green-800'
             : 'bg-yellow-100 text-yellow-800'
         }`}>
-          {stationInfo?.status === 'AVAILABLE' ? 'Dostupná' : stationInfo?.status || 'Neznámy stav'}
+          {stationInfo?.status
+            ? translateOr(t, `stationState.${stationInfo.status.toLowerCase()}`, stationInfo.status)
+            : t('stationState.unknown')}
         </span>
       </div>
 
       {/* Názov stanice */}
       <h2 className="text-xl font-bold text-center text-[var(--text-primary)] mb-2">
-        {stationInfo?.name || 'Nabíjacia stanica'}
+        {stationInfo?.name || t('stationFallback')}
       </h2>
 
       {/* Adresa */}
@@ -335,15 +344,15 @@ function ChargingPageContent() {
           <div className="space-y-4">
             {/* Výkon */}
             <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
-              <span className="text-[var(--text-secondary)]">Maximálny výkon</span>
+              <span className="text-[var(--text-secondary)]">{t('maxPower')}</span>
               <span className="font-semibold text-[var(--primary)]">
-                {stationInfo?.maxPower ? `${stationInfo.maxPower} kW` : '22 kW'}
+                {`${format.number(stationInfo?.maxPower || 22)} kW`}
               </span>
             </div>
 
             {/* Typ konektora */}
             <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
-              <span className="text-[var(--text-secondary)]">Typ konektora</span>
+              <span className="text-[var(--text-secondary)]">{t('connectorType')}</span>
               <span className="font-semibold">{stationInfo?.plugType || 'Type 2'}</span>
             </div>
 
@@ -351,38 +360,36 @@ function ChargingPageContent() {
             {stationInfo?.userPricePerKwh != null ? (
               <>
                 <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
-                  <span className="text-[var(--text-secondary)]">Vaša cena za energiu</span>
+                  <span className="text-[var(--text-secondary)]">{t('yourEnergyPrice')}</span>
                   <span className="font-semibold text-[var(--perun-green)]">
-                    {`${stationInfo.userPricePerKwh.toFixed(2)} EUR/kWh`}
+                    {t('perKwh', { price: eur(stationInfo.userPricePerKwh) })}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
-                  <span className="text-[var(--text-muted)] text-sm">Verejná cena</span>
+                  <span className="text-[var(--text-muted)] text-sm">{t('publicPrice')}</span>
                   <span className="text-sm text-[var(--text-muted)]">
-                    {stationInfo.pricePerKwh > 0
-                      ? `${stationInfo.pricePerKwh.toFixed(2)} EUR/kWh`
-                      : '0,00 EUR/kWh'}
+                    {t('perKwh', { price: eur(stationInfo.pricePerKwh > 0 ? stationInfo.pricePerKwh : 0) })}
                   </span>
                 </div>
               </>
             ) : (
               <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
-                <span className="text-[var(--text-secondary)]">Cena za energiu</span>
+                <span className="text-[var(--text-secondary)]">{t('energyPrice')}</span>
                 <span className="font-semibold text-[var(--accent)]">
                   {stationInfo?.pricePerKwh != null && stationInfo.pricePerKwh > 0
-                    ? `${stationInfo.pricePerKwh.toFixed(2)} EUR/kWh`
-                    : 'Zadarmo'}
+                    ? t('perKwh', { price: eur(stationInfo.pricePerKwh) })
+                    : t('free')}
                 </span>
               </div>
             )}
 
             {/* Cena za čas */}
             <div className="flex justify-between items-center py-2">
-              <span className="text-[var(--text-secondary)]">Cena za čas</span>
+              <span className="text-[var(--text-secondary)]">{t('timePrice')}</span>
               <span className="font-semibold">
-                {stationInfo?.pricePerH != null && stationInfo.pricePerH > 0
-                  ? `${stationInfo.pricePerH.toFixed(2)} EUR/hod`
-                  : '0.00 EUR/hod'}
+                {t('perHour', {
+                  price: eur(stationInfo?.pricePerH != null && stationInfo.pricePerH > 0 ? stationInfo.pricePerH : 0),
+                })}
               </span>
             </div>
           </div>
@@ -399,10 +406,10 @@ function ChargingPageContent() {
               size="lg"
               disabled={stationInfo?.status !== 'AVAILABLE'}
             >
-              Spustiť nabíjanie
+              {t('startCharging')}
             </Button>
             <Button onClick={handleNewSession} variant="ghost" fullWidth>
-              Zrušiť
+              {tc('cancel')}
             </Button>
           </>
         ) : (
@@ -413,7 +420,7 @@ function ChargingPageContent() {
               size="lg"
               disabled={stationInfo?.status !== 'AVAILABLE'}
             >
-              Nabíjať bez registrácie
+              {t('chargeAsGuest')}
             </Button>
             <Button
               onClick={() => { window.location.href = '/login?redirect=/charging'; }}
@@ -421,10 +428,10 @@ function ChargingPageContent() {
               fullWidth
               disabled={stationInfo?.status !== 'AVAILABLE'}
             >
-              Prihlásiť sa
+              {t('signIn')}
             </Button>
             <Button onClick={handleNewSession} variant="ghost" fullWidth>
-              Zrušiť
+              {tc('cancel')}
             </Button>
           </>
         )}
@@ -433,7 +440,7 @@ function ChargingPageContent() {
       {/* Upozornenie ak nie je dostupná */}
       {stationInfo?.status !== 'AVAILABLE' && (
         <p className="text-sm text-[var(--warning)] text-center mt-4">
-          Stanica momentálne nie je dostupná. Skúste neskôr.
+          {t('stationUnavailable')}
         </p>
       )}
     </div>
@@ -443,7 +450,7 @@ function ChargingPageContent() {
   const renderPaymentState = () => (
     <div className="p-4 sm:p-6 pt-6 sm:pt-8">
       <h2 className="text-xl font-bold text-center text-[var(--text-primary)] mb-6">
-        Platba za nabíjanie
+        {t('payment.title')}
       </h2>
 
       {preAuthClientSecret ? (
@@ -452,7 +459,7 @@ function ChargingPageContent() {
             clientSecret={preAuthClientSecret}
             preAuthAmount={preAuthAmount}
             stationInfo={{
-              name: stationInfo?.name || 'Nabíjacia stanica',
+              name: stationInfo?.name || t('stationFallback'),
               address: stationInfo?.address || '',
               pricePerKwh: stationInfo?.pricePerKwh ?? 0,
             }}
@@ -465,17 +472,17 @@ function ChargingPageContent() {
           {/* Station Info Summary */}
           <div className="bg-[var(--card-alt)] rounded-2xl p-4">
             <h3 className="font-semibold text-[var(--text-primary)] mb-2">
-              {stationInfo?.name || 'Nabíjacia stanica'}
+              {stationInfo?.name || t('stationFallback')}
             </h3>
             <p className="text-sm text-[var(--text-secondary)] mb-3">
               {stationInfo?.address}
             </p>
             <div className="flex justify-between items-center pt-3 border-t border-[var(--border)]">
-              <span className="text-sm text-[var(--text-secondary)]">Cena za kWh</span>
+              <span className="text-sm text-[var(--text-secondary)]">{t('pricePerKwhLabel')}</span>
               <span className="font-semibold text-[var(--text-primary)]">
                 {stationInfo?.pricePerKwh != null && stationInfo.pricePerKwh > 0
-                  ? `${stationInfo.pricePerKwh.toFixed(2)} EUR`
-                  : 'Zadarmo'}
+                  ? eur(stationInfo.pricePerKwh)
+                  : t('free')}
               </span>
             </div>
           </div>
@@ -485,11 +492,12 @@ function ChargingPageContent() {
             <div className="flex items-start gap-3">
               <div className="text-2xl">💳</div>
               <div>
-                <h4 className="font-semibold text-blue-900">Predautorizácia</h4>
+                <h4 className="font-semibold text-blue-900">{t('payment.preAuthTitle')}</h4>
                 <p className="text-sm text-blue-700 mt-1">
-                  Na vašej karte bude dočasne zablokovaná suma{' '}
-                  <strong>{preAuthAmount.toFixed(2)} EUR</strong>.
-                  Po ukončení nabíjania bude strhnutá len skutočná suma.
+                  {t.rich('payment.preAuthText', {
+                    amount: eur(preAuthAmount),
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                  })}
                 </p>
               </div>
             </div>
@@ -498,11 +506,11 @@ function ChargingPageContent() {
           {/* Email Form */}
           <div>
             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-              Váš email (pre potvrdenie)
+              {t('payment.emailLabel')}
             </label>
             <Input
               type="email"
-              placeholder="vas@email.sk"
+              placeholder={t('payment.emailPlaceholder')}
               value={guestEmail}
               onChange={(e) => setGuestEmail(e.target.value)}
               className="mb-4"
@@ -512,12 +520,12 @@ function ChargingPageContent() {
               fullWidth
               disabled={!guestEmail || !guestEmail.includes('@')}
             >
-              Pokračovať k platbe
+              {t('payment.continue')}
             </Button>
           </div>
 
           <Button onClick={handleNewSession} variant="outline" fullWidth>
-            Zrušiť
+            {tc('cancel')}
           </Button>
         </div>
       )}
@@ -534,10 +542,10 @@ function ChargingPageContent() {
         </svg>
       </div>
       <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
-        Autorizujem platbu...
+        {t('authorizing.title')}
       </h2>
       <p className="text-[var(--text-secondary)] text-center">
-        Prosím počkajte, overujeme vašu platobnú kartu
+        {t('authorizing.text')}
       </p>
     </div>
   );
@@ -551,13 +559,13 @@ function ChargingPageContent() {
         </div>
       </div>
       <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
-        Spúšťam nabíjanie...
+        {t('starting.title')}
       </h2>
       <p className="text-[var(--text-secondary)] text-center">
-        Pripojte kábel k vozidlu
+        {t('starting.text')}
       </p>
       <div className="mt-4 text-sm text-[var(--text-muted)]">
-        Platba bola autorizovaná: {preAuthAmount.toFixed(2)} EUR
+        {t('starting.paymentAuthorized', { amount: eur(preAuthAmount) })}
       </div>
     </div>
   );
@@ -585,7 +593,7 @@ function ChargingPageContent() {
       {isGuest && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6">
           <p className="text-sm text-blue-800 text-center">
-            Predautorizácia: {preAuthAmount.toFixed(2)} EUR | Po nabíjaní bude strhnutá skutočná suma
+            {t('guestBanner', { amount: eur(preAuthAmount) })}
           </p>
         </div>
       )}
@@ -595,7 +603,7 @@ function ChargingPageContent() {
           <CardContent>
             <p className="text-sm text-[var(--text-secondary)] mb-1">{t('currentPower')}</p>
             <p className="text-2xl font-bold text-[var(--primary)]">
-              {stats.power.toFixed(1)} <span className="text-base font-normal">kW</span>
+              {fixed(stats.power, 1)} <span className="text-base font-normal">kW</span>
             </p>
           </CardContent>
         </Card>
@@ -604,7 +612,7 @@ function ChargingPageContent() {
           <CardContent>
             <p className="text-sm text-[var(--text-secondary)] mb-1">{t('energyDelivered')}</p>
             <p className="text-2xl font-bold text-[var(--secondary)]">
-              {stats.energy.toFixed(2)} <span className="text-base font-normal">kWh</span>
+              {fixed(stats.energy, 2)} <span className="text-base font-normal">kWh</span>
             </p>
           </CardContent>
         </Card>
@@ -622,7 +630,7 @@ function ChargingPageContent() {
           <CardContent>
             <p className="text-sm text-[var(--text-secondary)] mb-1">{t('estimatedCost')}</p>
             <p className="text-2xl font-bold text-[var(--accent)]">
-              {stats.cost.toFixed(2)} <span className="text-base font-normal">EUR</span>
+              {fixed(stats.cost, 2)} <span className="text-base font-normal">EUR</span>
             </p>
           </CardContent>
         </Card>
@@ -643,11 +651,11 @@ function ChargingPageContent() {
         </svg>
       </div>
       <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
-        Zastavujem nabíjanie...
+        {t('stopping.title')}
       </h2>
       {isGuest && (
         <p className="text-[var(--text-secondary)] text-center mt-2">
-          Strhávam platbu za {stats.cost.toFixed(2)} EUR
+          {t('stopping.capturing', { amount: eur(stats.cost) })}
         </p>
       )}
     </div>
@@ -670,7 +678,7 @@ function ChargingPageContent() {
       {isGuest && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-6">
           <p className="text-sm text-green-800 text-center">
-            Potvrdenie bolo odoslané na: {guestEmail}
+            {t('receiptSent', { email: guestEmail })}
           </p>
         </div>
       )}
@@ -678,7 +686,7 @@ function ChargingPageContent() {
       <div className="space-y-5 my-10">
         <div className="flex justify-between py-3 border-b border-[var(--border)]">
           <span className="text-[var(--text-secondary)]">{t('energyDelivered')}</span>
-          <span className="font-semibold">{stats.energy.toFixed(2)} kWh</span>
+          <span className="font-semibold">{fixed(stats.energy, 2)} kWh</span>
         </div>
         <div className="flex justify-between py-3 border-b border-[var(--border)]">
           <span className="text-[var(--text-secondary)]">{t('duration')}</span>
@@ -686,12 +694,12 @@ function ChargingPageContent() {
         </div>
         <div className="flex justify-between py-3">
           <span className="text-[var(--text-secondary)]">{t('finalCost')}</span>
-          <span className="font-bold text-xl text-[var(--primary)]">{stats.cost.toFixed(2)} EUR</span>
+          <span className="font-bold text-xl text-[var(--primary)]">{eur(stats.cost)}</span>
         </div>
       </div>
 
       <Button onClick={handleNewSession} fullWidth size="lg">
-        Nové nabíjanie
+        {t('newSession')}
       </Button>
     </div>
   );
@@ -704,13 +712,13 @@ function ChargingPageContent() {
         </svg>
       </div>
       <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
-        Chyba
+        {tc('error')}
       </h2>
       <p className="text-[var(--text-secondary)] text-center mb-6">
-        {error || 'Niečo sa pokazilo'}
+        {error || t('errors.generic')}
       </p>
       <Button onClick={handleNewSession} fullWidth>
-        Skúsiť znova
+        {tc('retry')}
       </Button>
     </div>
   );
@@ -718,18 +726,18 @@ function ChargingPageContent() {
   const getPageTitle = () => {
     switch (state) {
       case 'connector_select':
-        return 'Výber konektora';
+        return t('titles.connectorSelect');
       case 'station_info':
-        return 'Nabíjacia stanica';
+        return t('titles.stationInfo');
       case 'payment':
-        return 'Platba';
+        return t('titles.payment');
       case 'authorizing':
       case 'starting':
-        return 'Spúšťam nabíjanie';
+        return t('titles.starting');
       case 'charging':
-        return 'Nabíjanie';
+        return t('titles.charging');
       case 'completed':
-        return 'Dokončené';
+        return t('titles.completed');
       default:
         return t('scanQr');
     }

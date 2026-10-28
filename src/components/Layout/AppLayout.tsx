@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Navigation } from './Navigation';
 
 interface AppLayoutProps {
@@ -50,9 +51,11 @@ interface PageHeaderProps {
 
 const BackButton = () => {
   const router = useRouter();
+  const t = useTranslations('common');
   return (
     <button
       onClick={() => router.back()}
+      aria-label={t('back')}
       className="p-2 -ml-2 rounded-full hover:bg-[var(--surface-secondary)] transition-colors"
     >
       <svg

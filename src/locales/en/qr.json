@@ -1,0 +1,20 @@
+{
+  "instructions": "Point your camera at the QR code on the charging station",
+  "startingCamera": "Starting camera...",
+  "backCamera": "Back camera",
+  "frontCamera": "Front camera",
+  "switchToFront": "Switch to front camera",
+  "switchToBack": "Switch to back camera",
+  "cameraStartFailed": "Could not start the camera. Allow camera access in your browser settings.",
+  "httpsRequired": "The camera requires a secure connection (HTTPS). Open the app via https:// or localhost.",
+  "secureRequired": {
+    "title": "Secure connection required",
+    "text": "Camera access is only allowed over HTTPS or localhost. To scan QR codes, open the app over a secure connection."
+  },
+  "manualHint": "You can also enter the station code manually:",
+  "enterManually": "Enter code manually →",
+  "permissionDenied": {
+    "title": "Camera access denied",
+    "hint": "Allow camera access in your browser settings"
+  }
+}

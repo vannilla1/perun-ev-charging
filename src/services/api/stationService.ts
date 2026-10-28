@@ -44,9 +44,6 @@ interface ECarUpStationGroup {
 
 // Konverzia eCarUp formátu na náš formát
 function mapECarUpStation(station: ECarUpStation): ChargingStation {
-  // Filtrovať stanice bez platných súradníc
-  const hasValidLocation = station.latitude !== 0 && station.longitude !== 0;
-
   // Stanica bez konektorov = offline
   const hasConnectors = station.connectors && station.connectors.length > 0;
 
@@ -69,8 +66,8 @@ function mapECarUpStation(station: ECarUpStation): ChargingStation {
 
   return {
     id: station.id,
-    name: station.name || 'Nabíjacia stanica',
-    address: [station.street, station.city].filter(Boolean).join(', ') || (hasValidLocation ? 'ePerun nabíjacia stanica' : 'Neznáma adresa'),
+    name: station.name || '',
+    address: [station.street, station.city].filter(Boolean).join(', '),
     latitude: station.latitude,
     longitude: station.longitude,
     status,
@@ -156,8 +153,8 @@ function mergeNearbyStations(stations: ChargingStation[]): ChargingStation[] {
       const allConnectors = nearbyStations.flatMap(s =>
         s.connectors.map(c => ({
           ...c,
-          // Pridať info o strane (L/P) do názvu konektora
-          name: s.name.includes(' L') ? 'Ľavá' : s.name.includes(' P') ? 'Pravá' : undefined,
+          // Strana (L/P) konektora
+          side: s.name.includes(' L') ? 'left' as const : s.name.includes(' P') ? 'right' as const : undefined,
         }))
       );
 

@@ -41,9 +41,9 @@ const CreditCardIcon = () => (
 );
 
 export default function PaymentMethodsPage() {
-  const t = useTranslations('profile');
+  const t = useTranslations('payment');
   const router = useRouter();
-  const { isLoggedIn, isLoading: authLoading } = useAuth();
+  const { isLoggedIn, isLoading: authLoading, isReady } = useAuth();
 
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,10 +51,10 @@ export default function PaymentMethodsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !isLoggedIn) {
+    if (isReady && !authLoading && !isLoggedIn) {
       router.push('/login');
     }
-  }, [authLoading, isLoggedIn, router]);
+  }, [isReady, authLoading, isLoggedIn, router]);
 
   useEffect(() => {
     loadPaymentMethods();
@@ -90,7 +90,7 @@ export default function PaymentMethodsPage() {
   };
 
   const handleRemove = async (methodId: string) => {
-    if (!confirm('Naozaj chcete odstrániť túto platobnú metódu?')) return;
+    if (!confirm(t('confirmRemove'))) return;
 
     setActionLoading(methodId);
     try {
@@ -108,9 +108,9 @@ export default function PaymentMethodsPage() {
     loadPaymentMethods();
   };
 
-  if (authLoading || !isLoggedIn) {
+  if (!isReady || authLoading || !isLoggedIn) {
     return (
-      <AppLayout header={<PageHeader title={t('paymentMethods')} showBack />}>
+      <AppLayout header={<PageHeader title={t('title')} showBack />}>
         <div className="flex items-center justify-center h-64">
           <Loading size="lg" />
         </div>
@@ -119,7 +119,7 @@ export default function PaymentMethodsPage() {
   }
 
   return (
-    <AppLayout header={<PageHeader title={t('paymentMethods')} showBack />}>
+    <AppLayout header={<PageHeader title={t('title')} showBack />}>
       <div className="p-4 max-w-lg mx-auto">
         {showAddForm ? (
           <AddCardForm onSuccess={handleAddSuccess} onCancel={() => setShowAddForm(false)} />
@@ -133,7 +133,7 @@ export default function PaymentMethodsPage() {
               onClick={() => setShowAddForm(true)}
               className="mb-6"
             >
-              Pridať novú kartu
+              {t('addNewCard')}
             </Button>
 
             {/* Zoznam kariet */}
@@ -148,10 +148,10 @@ export default function PaymentMethodsPage() {
                     <CreditCardIcon />
                   </div>
                   <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
-                    Žiadne platobné metódy
+                    {t('empty.title')}
                   </h3>
                   <p className="text-[var(--text-secondary)] mb-4">
-                    Pridajte kartu pre rýchle a pohodlné platby za nabíjanie.
+                    {t('empty.description')}
                   </p>
                 </CardContent>
               </Card>
@@ -186,10 +186,7 @@ export default function PaymentMethodsPage() {
                     d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <span>
-                  Vaše platobné údaje sú bezpečne uložené a šifrované. Nikdy neukladáme
-                  kompletné číslo karty.
-                </span>
+                <span>{t('securityNote')}</span>
               </p>
             </div>
           </>

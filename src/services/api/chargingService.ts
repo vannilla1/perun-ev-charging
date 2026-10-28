@@ -6,6 +6,12 @@ function authHeaders(): Record<string, string> {
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 
+export class UserFacingError extends Error {}
+
+function apiError(data: { error?: unknown } | null | undefined, code: string): Error {
+  return typeof data?.error === 'string' && data.error ? new UserFacingError(data.error) : new Error(code);
+}
+
 // eCarUp Active Charging Response (podľa API dokumentácie)
 interface ActiveChargingResponse {
   driverId?: string;
@@ -99,7 +105,7 @@ export async function getStationInfo(
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || 'Nepodarilo sa načítať informácie o stanici');
+      throw apiError(data, 'station_info_failed');
     }
 
     return data;
@@ -128,7 +134,7 @@ export async function startCharging(
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || 'Nepodarilo sa spustiť nabíjanie');
+      throw apiError(data, 'start_failed');
     }
 
     return data;
@@ -153,7 +159,7 @@ export async function stopCharging(sessionId: string): Promise<StopChargingRespo
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || 'Nepodarilo sa zastaviť nabíjanie');
+      throw apiError(data, 'stop_failed');
     }
 
     return data;
@@ -173,7 +179,7 @@ export async function getSessionStatus(sessionId: string): Promise<SessionStatus
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || 'Nepodarilo sa získať stav nabíjania');
+      throw apiError(data, 'status_failed');
     }
 
     return data;
@@ -312,19 +318,13 @@ export function calculateEstimatedCost(energyKwh: number, pricePerKwh: number): 
   return Math.round(energyKwh * pricePerKwh * 100) / 100;
 }
 
-// Formátovanie trvania
-export function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-  if (minutes > 0) {
-    return `${minutes}m ${secs}s`;
-  }
-  return `${secs}s`;
+// Rozklad trvania
+export function splitDuration(totalSeconds: number): { hours: number; minutes: number; seconds: number } {
+  return {
+    hours: Math.floor(totalSeconds / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60,
+  };
 }
 
 // Export pre chargingService objekt (pre spätnú kompatibilitu)

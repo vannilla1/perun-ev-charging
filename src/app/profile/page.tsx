@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { AppLayout, PageHeader } from '@/components/Layout';
 import { Card, CardContent, Button } from '@/components/Common';
 import { useAuth } from '@/contexts';
@@ -58,8 +58,9 @@ const MenuItem = ({ icon, label, value, onClick, danger, href }: MenuItemProps) 
 
 export default function ProfilePage() {
   const t = useTranslations('profile');
+  const format = useFormatter();
   const router = useRouter();
-  const { user, isLoggedIn, isLoading, logout } = useAuth();
+  const { user, isLoggedIn, isLoading, isReady, logout } = useAuth();
 
   const handleLogout = () => {
     logout();
@@ -75,7 +76,7 @@ export default function ProfilePage() {
     : { totalCharges: 0, totalEnergy: 0, totalSpent: 0 };
 
   // Loading stav počas inicializácie autentifikácie
-  if (isLoading) {
+  if (!isReady || isLoading) {
     return (
       <AppLayout
         header={
@@ -99,7 +100,7 @@ export default function ProfilePage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
-            <p className="text-base text-[var(--text-secondary)]">Načítavam profil...</p>
+            <p className="text-base text-[var(--text-secondary)]">{t('loading')}</p>
           </div>
         </div>
       </AppLayout>
@@ -121,17 +122,17 @@ export default function ProfilePage() {
                 <LoginIcon />
               </div>
               <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
-                Prihláste sa
+                {t('signInPrompt.title')}
               </h2>
               <p className="text-[var(--text-secondary)] mb-6">
-                Pre zobrazenie profilu a histórie nabíjaní sa musíte prihlásiť
+                {t('signInPrompt.description')}
               </p>
               <div className="space-y-3">
                 <Button fullWidth onClick={() => router.push('/login')}>
-                  Prihlásiť sa
+                  {t('signInPrompt.signIn')}
                 </Button>
                 <Button variant="outline" fullWidth onClick={() => router.push('/register')}>
-                  Vytvoriť účet
+                  {t('signInPrompt.createAccount')}
                 </Button>
               </div>
             </CardContent>
@@ -169,7 +170,7 @@ export default function ProfilePage() {
                 </h2>
                 <p className="text-sm text-[var(--text-secondary)]">{user?.email}</p>
               </div>
-              <Link href="/profile/edit" className="p-2 hover:bg-[var(--surface-secondary)] rounded-full transition-colors">
+              <Link href="/profile/edit" aria-label={t('editProfile')} className="p-2 hover:bg-[var(--surface-secondary)] rounded-full transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                 </svg>
@@ -187,7 +188,7 @@ export default function ProfilePage() {
                 <div className="w-12 h-12 rounded-full bg-[var(--secondary)] bg-opacity-10 flex items-center justify-center mx-auto text-[var(--secondary)]" style={{ marginBottom: '12px' }}>
                   <BoltIcon />
                 </div>
-                <p className="text-xl font-bold text-[var(--text-primary)]" style={{ marginBottom: '4px' }}>{mockStats.totalCharges}</p>
+                <p className="text-xl font-bold text-[var(--text-primary)]" style={{ marginBottom: '4px' }}>{format.number(mockStats.totalCharges)}</p>
                 <p className="text-xs text-[var(--text-secondary)]">{t('totalCharges')}</p>
               </div>
 
@@ -197,7 +198,7 @@ export default function ProfilePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                   </svg>
                 </div>
-                <p className="text-xl font-bold text-[var(--text-primary)]" style={{ marginBottom: '4px' }}>{mockStats.totalEnergy}</p>
+                <p className="text-xl font-bold text-[var(--text-primary)]" style={{ marginBottom: '4px' }}>{format.number(mockStats.totalEnergy)}</p>
                 <p className="text-xs text-[var(--text-secondary)]">kWh</p>
               </div>
 
@@ -207,7 +208,7 @@ export default function ProfilePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <p className="text-xl font-bold text-[var(--text-primary)]" style={{ marginBottom: '4px' }}>{mockStats.totalSpent}€</p>
+                <p className="text-xl font-bold text-[var(--text-primary)]" style={{ marginBottom: '4px' }}>{format.number(mockStats.totalSpent, { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                 <p className="text-xs text-[var(--text-secondary)]">{t('totalSpent')}</p>
               </div>
             </div>

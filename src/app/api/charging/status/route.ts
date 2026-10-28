@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 import { getSmartmeAuth } from '@/lib/services/authHelper';
 import { getPicoChargingData, CHARGING_STATE_NAMES } from '@/lib/services/smartmeService';
 import { getEcarupAccessToken, ECARUP_API_BASE } from '@/lib/services/ecarupAuth';
 
 // GET /api/charging/status?sessionId=xxx
 export async function GET(request: NextRequest) {
+  const t = await getTranslations('api');
   try {
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
 
     if (!sessionId) {
-      return NextResponse.json({ error: 'ID relácie je povinné' }, { status: 400 });
+      return NextResponse.json({ error: t('common.sessionIdRequired') }, { status: 400 });
     }
 
     // 1. Ak je to Pico session, použijeme smart-me API
@@ -124,6 +126,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Get charging status error:', error);
-    return NextResponse.json({ error: 'Nepodarilo sa získať stav nabíjania' }, { status: 500 });
+    return NextResponse.json({ error: t('charging.statusFailed') }, { status: 500 });
   }
 }

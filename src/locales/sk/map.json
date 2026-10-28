@@ -1,0 +1,17 @@
+{
+  "loadingMap": "Načítavam mapu...",
+  "loadingStations": "Načítavam stanice",
+  "pleaseWait": "Prosím, počkajte...",
+  "loadError": "Nepodarilo sa načítať stanice",
+  "toggleFilters": "Filtre staníc",
+  "onlyAvailable": "Len dostupné stanice",
+  "clear": "Vymazať",
+  "apply": "Použiť",
+  "yourPricePerKwh": "Vaša cena za kWh",
+  "publicPrice": "Verejná cena: {price}",
+  "pricePerKwh": "Cena za kWh",
+  "free": "Zadarmo",
+  "navigateShort": "Nav",
+  "charge": "Nabíjať",
+  "geolocationUnsupported": "Váš prehliadač nepodporuje určenie polohy"
+}

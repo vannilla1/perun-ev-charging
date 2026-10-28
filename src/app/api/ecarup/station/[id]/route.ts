@@ -1,17 +1,19 @@
 import { NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 import { getEcarupAccessToken, ECARUP_API_BASE } from '@/lib/services/ecarupAuth';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const t = await getTranslations('api');
   const { id } = await params;
 
   const accessToken = await getEcarupAccessToken();
 
   if (!accessToken) {
     return NextResponse.json(
-      { error: 'Failed to authenticate with eCarUp API' },
+      { error: t('stations.ecarupAuthFailed') },
       { status: 401 }
     );
   }
@@ -31,7 +33,7 @@ export async function GET(
       const errorText = await response.text();
       console.error('eCarUp API error:', response.status, errorText);
       return NextResponse.json(
-        { error: 'Failed to fetch station', details: errorText },
+        { error: t('stations.stationFetchFailed'), details: errorText },
         { status: response.status }
       );
     }
@@ -41,7 +43,7 @@ export async function GET(
   } catch (error) {
     console.error('eCarUp API request failed:', error);
     return NextResponse.json(
-      { error: 'API request failed' },
+      { error: t('stations.requestFailed') },
       { status: 500 }
     );
   }

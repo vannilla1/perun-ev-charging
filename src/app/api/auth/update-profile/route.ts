@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 import { ObjectId } from 'mongodb';
 import { updateUser } from '@/lib/services/userService';
 import { decodeToken } from '@/lib/services/authHelper';
@@ -34,23 +35,24 @@ async function findUserEmailByToken(userId: string): Promise<string | null> {
 }
 
 export async function PUT(request: NextRequest) {
+  const t = await getTranslations('api');
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader) {
-      return NextResponse.json({ error: 'Nie ste prihlásený' }, { status: 401 });
+      return NextResponse.json({ error: t('common.notSignedIn') }, { status: 401 });
     }
 
     // Dekódujeme token a získame userId
     const token = authHeader.replace('Bearer ', '');
     const payload = await decodeToken(token);
     if (!payload || !payload.userId) {
-      return NextResponse.json({ error: 'Neplatný token' }, { status: 401 });
+      return NextResponse.json({ error: t('common.invalidToken') }, { status: 401 });
     }
 
     // Nájdeme email z DB podľa userId z tokenu (nie z request body!)
     const userEmail = await findUserEmailByToken(payload.userId);
     if (!userEmail) {
-      return NextResponse.json({ error: 'Používateľ nebol nájdený' }, { status: 404 });
+      return NextResponse.json({ error: t('common.userNotFound') }, { status: 404 });
     }
 
     const body = await request.json();
@@ -63,7 +65,7 @@ export async function PUT(request: NextRequest) {
     });
 
     if (!updated) {
-      return NextResponse.json({ error: 'Nepodarilo sa aktualizovať profil' }, { status: 500 });
+      return NextResponse.json({ error: t('auth.profileUpdateFailed') }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -72,6 +74,6 @@ export async function PUT(request: NextRequest) {
     });
   } catch (error) {
     console.error('Update profile error:', error);
-    return NextResponse.json({ error: 'Interná chyba servera' }, { status: 500 });
+    return NextResponse.json({ error: t('common.internalError') }, { status: 500 });
   }
 }

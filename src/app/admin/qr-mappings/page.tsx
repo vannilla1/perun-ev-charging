@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface QRMapping {
   serial: string;
@@ -16,6 +17,8 @@ interface Station {
 }
 
 export default function QRMappingsAdminPage() {
+  const t = useTranslations('admin.qrMappings');
+  const tCommon = useTranslations('common');
   const [mappings, setMappings] = useState<QRMapping[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,7 +48,7 @@ export default function QRMappingsAdminPage() {
       const stationsData = await stationsRes.json();
       setStations(stationsData.stations || []);
     } catch (err) {
-      setError('Chyba pri načítaní dát');
+      setError(t('loadError'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -58,7 +61,7 @@ export default function QRMappingsAdminPage() {
     setSuccess(null);
 
     if (!serial || !stationId) {
-      setError('Serial a Station ID sú povinné');
+      setError(t('required'));
       return;
     }
 
@@ -71,21 +74,21 @@ export default function QRMappingsAdminPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Chyba pri ukladaní');
+        throw new Error(data.error || t('saveError'));
       }
 
-      setSuccess('Mapovanie bolo uložené');
+      setSuccess(t('saved'));
       setSerial('');
       setStationId('');
       setStationName('');
       loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Chyba pri ukladaní');
+      setError(err instanceof Error ? err.message : t('saveError'));
     }
   };
 
   const handleDelete = async (serialToDelete: string) => {
-    if (!confirm('Naozaj chcete odstrániť toto mapovanie?')) return;
+    if (!confirm(t('confirmDelete'))) return;
 
     try {
       const res = await fetch(`/api/qr-mappings?serial=${encodeURIComponent(serialToDelete)}`, {
@@ -93,13 +96,13 @@ export default function QRMappingsAdminPage() {
       });
 
       if (!res.ok) {
-        throw new Error('Chyba pri odstraňovaní');
+        throw new Error(t('deleteError'));
       }
 
-      setSuccess('Mapovanie bolo odstránené');
+      setSuccess(t('deleted'));
       loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Chyba pri odstraňovaní');
+      setError(err instanceof Error ? err.message : t('deleteError'));
     }
   };
 
@@ -131,8 +134,8 @@ export default function QRMappingsAdminPage() {
     return (
       <div className="min-h-screen bg-gray-100 p-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl font-bold mb-4">QR Mapovania - Admin</h1>
-          <p>Načítavam...</p>
+          <h1 className="text-2xl font-bold mb-4">{t('title')}</h1>
+          <p>{tCommon('loading')}</p>
         </div>
       </div>
     );
@@ -141,7 +144,7 @@ export default function QRMappingsAdminPage() {
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">QR Mapovania - Admin</h1>
+        <h1 className="text-2xl font-bold mb-6">{t('title')}</h1>
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -157,32 +160,32 @@ export default function QRMappingsAdminPage() {
 
         {/* Formulár na pridanie mapovania */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">Pridať nové mapovanie</h2>
+          <h2 className="text-lg font-semibold mb-4">{t('form.title')}</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Serial z QR kódu (alebo celá URL)
+                {t('form.serial')}
               </label>
               <input
                 type="text"
                 value={serial}
                 onChange={(e) => extractSerialFromUrl(e.target.value)}
-                placeholder="IBQqDLHD3m4KVBPAD4ed4Nyr3z alebo https://www.ecarup.com/app/?serial=..."
+                placeholder={t('form.serialPlaceholder')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Stanica
+                {t('form.station')}
               </label>
               <select
                 value={stationId}
                 onChange={handleStationSelect}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">-- Vyber stanicu --</option>
+                <option value="">{t('form.selectStation')}</option>
                 {stations.map((station) => (
                   <option key={station.id} value={station.id}>
                     {station.name} (#{station.serialnumber})
@@ -193,7 +196,7 @@ export default function QRMappingsAdminPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Názov stanice (voliteľné)
+                {t('form.stationName')}
               </label>
               <input
                 type="text"
@@ -208,7 +211,7 @@ export default function QRMappingsAdminPage() {
               type="submit"
               className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
             >
-              Pridať mapovanie
+              {t('form.submit')}
             </button>
           </form>
         </div>
@@ -216,20 +219,20 @@ export default function QRMappingsAdminPage() {
         {/* Zoznam existujúcich mapovaní */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4">
-            Existujúce mapovania ({mappings.length})
+            {t('list.title', { count: mappings.length })}
           </h2>
 
           {mappings.length === 0 ? (
-            <p className="text-gray-500">Žiadne mapovania</p>
+            <p className="text-gray-500">{t('list.empty')}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-2 px-2">Serial</th>
-                    <th className="text-left py-2 px-2">Station ID</th>
-                    <th className="text-left py-2 px-2">Názov</th>
-                    <th className="text-right py-2 px-2">Akcie</th>
+                    <th className="text-left py-2 px-2">{t('list.serial')}</th>
+                    <th className="text-left py-2 px-2">{t('list.stationId')}</th>
+                    <th className="text-left py-2 px-2">{t('list.name')}</th>
+                    <th className="text-right py-2 px-2">{t('list.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -247,7 +250,7 @@ export default function QRMappingsAdminPage() {
                           onClick={() => handleDelete(mapping.serial)}
                           className="text-red-600 hover:text-red-800"
                         >
-                          Odstrániť
+                          {t('list.delete')}
                         </button>
                       </td>
                     </tr>
@@ -261,14 +264,14 @@ export default function QRMappingsAdminPage() {
         {/* Debug info - stanice */}
         <div className="bg-white rounded-lg shadow p-6 mt-6">
           <h2 className="text-lg font-semibold mb-4">
-            Dostupné stanice ({stations.length})
+            {t('stations.title', { count: stations.length })}
           </h2>
           <div className="text-xs font-mono max-h-60 overflow-y-auto">
             {stations.map((station) => (
               <div key={station.id} className="py-1 border-b">
                 <strong>{station.name}</strong><br />
-                ID: {station.id}<br />
-                Serial#: {station.serialnumber}
+                {t('stations.id', { id: station.id })}<br />
+                {t('stations.serial', { serial: String(station.serialnumber) })}
               </div>
             ))}
           </div>

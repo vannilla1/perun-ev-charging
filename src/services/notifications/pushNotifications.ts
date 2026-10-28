@@ -1,5 +1,7 @@
 'use client';
 
+import type { useTranslations } from 'next-intl';
+
 // Push notifikácie pre stav nabíjania
 
 export interface NotificationOptions {
@@ -120,34 +122,36 @@ export async function showNotification(options: NotificationOptions): Promise<bo
 }
 
 // Notifikácie pre nabíjanie
+export type PushNotificationTranslator = ReturnType<typeof useTranslations<'common.pushNotifications'>>;
+
 export const chargingNotifications = {
   // Nabíjanie začalo
-  chargingStarted: (stationName: string) =>
+  chargingStarted: (t: PushNotificationTranslator, stationName: string) =>
     showNotification({
-      title: 'Nabíjanie začalo ⚡',
-      body: `Vaše vozidlo sa nabíja na stanici ${stationName}`,
+      title: t('chargingStarted.title'),
+      body: t('chargingStarted.body', { station: stationName }),
       tag: 'charging-status',
       icon: '/icons/charging-icon.png',
     }),
 
   // Nabíjanie dokončené
-  chargingCompleted: (stationName: string, energy: number, cost: number) =>
+  chargingCompleted: (t: PushNotificationTranslator, stationName: string, energy: number, cost: number) =>
     showNotification({
-      title: 'Nabíjanie dokončené ✅',
-      body: `Nabitých ${energy.toFixed(1)} kWh za ${cost.toFixed(2)} €`,
+      title: t('chargingCompleted.title'),
+      body: t('chargingCompleted.body', { energy, cost }),
       tag: 'charging-status',
       icon: '/icons/complete-icon.png',
       requireInteraction: true,
       actions: [
-        { action: 'view', title: 'Zobraziť detail' },
-        { action: 'dismiss', title: 'Zavrieť' },
+        { action: 'view', title: t('chargingCompleted.view') },
+        { action: 'dismiss', title: t('chargingCompleted.dismiss') },
       ],
     }),
 
   // Chyba nabíjania
-  chargingError: (message: string) =>
+  chargingError: (t: PushNotificationTranslator, message: string) =>
     showNotification({
-      title: 'Chyba nabíjania ⚠️',
+      title: t('chargingError.title'),
       body: message,
       tag: 'charging-error',
       icon: '/icons/error-icon.png',
@@ -155,20 +159,20 @@ export const chargingNotifications = {
     }),
 
   // Pripomienka na odpojenie
-  disconnectReminder: (stationName: string) =>
+  disconnectReminder: (t: PushNotificationTranslator, stationName: string) =>
     showNotification({
-      title: 'Odpojte vozidlo 🔌',
-      body: `Nabíjanie je dokončené na stanici ${stationName}. Prosím, odpojte vozidlo.`,
+      title: t('disconnectReminder.title'),
+      body: t('disconnectReminder.body', { station: stationName }),
       tag: 'disconnect-reminder',
       icon: '/icons/reminder-icon.png',
       requireInteraction: true,
     }),
 
   // Nízka batéria
-  lowBattery: (percentage: number) =>
+  lowBattery: (t: PushNotificationTranslator, percentage: number) =>
     showNotification({
-      title: 'Nízka batéria 🔋',
-      body: `Stav batérie: ${percentage}%. Odporúčame nájsť nabíjaciu stanicu.`,
+      title: t('lowBattery.title'),
+      body: t('lowBattery.body', { percentage }),
       tag: 'low-battery',
       icon: '/icons/battery-icon.png',
     }),

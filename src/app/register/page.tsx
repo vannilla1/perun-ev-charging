@@ -6,10 +6,11 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts';
-import { UserIcon, EmailIcon, LockIcon, EyeIcon, EyeOffIcon, BackIcon } from '@/components/Common';
+import { UserIcon, EmailIcon, LockIcon, EyeIcon, EyeOffIcon, BackIcon, LocaleSwitcher } from '@/components/Common';
 
 export default function RegisterPage() {
   const t = useTranslations('auth');
+  const tCommon = useTranslations('common');
   const router = useRouter();
   const { register, isLoading, isLoggedIn, error, clearError } = useAuth();
 
@@ -36,37 +37,37 @@ export default function RegisterPage() {
 
   const validateForm = (): boolean => {
     if (!firstName.trim()) {
-      setFormError('Zadajte meno');
+      setFormError(t('validation.firstNameRequired'));
       return false;
     }
 
     if (!lastName.trim()) {
-      setFormError('Zadajte priezvisko');
+      setFormError(t('validation.lastNameRequired'));
       return false;
     }
 
     if (!email.trim()) {
-      setFormError('Zadajte e-mailovú adresu');
+      setFormError(t('validation.emailRequired'));
       return false;
     }
 
     if (!email.includes('@')) {
-      setFormError('Neplatná e-mailová adresa');
+      setFormError(t('validation.emailInvalid'));
       return false;
     }
 
     if (!password) {
-      setFormError('Zadajte heslo');
+      setFormError(t('validation.passwordRequired'));
       return false;
     }
 
     if (password.length < 6) {
-      setFormError('Heslo musí mať aspoň 6 znakov');
+      setFormError(t('validation.passwordTooShort'));
       return false;
     }
 
     if (password !== confirmPassword) {
-      setFormError('Heslá sa nezhodujú');
+      setFormError(t('validation.passwordsMismatch'));
       return false;
     }
 
@@ -91,14 +92,16 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-[var(--surface-secondary)] flex flex-col">
       {/* Header s back button */}
-      <div style={{ padding: '24px 16px 0 16px' }}>
+      <div className="flex items-center justify-between" style={{ padding: '24px 16px 0 16px' }}>
         <button
           onClick={() => router.back()}
+          aria-label={tCommon('back')}
           className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-full hover:bg-[var(--surface-secondary)] transition-colors flex items-center justify-center"
           style={{ width: '44px', height: '44px' }}
         >
           <BackIcon />
         </button>
+        <LocaleSwitcher />
       </div>
 
       {/* Content */}
@@ -118,8 +121,8 @@ export default function RegisterPage() {
             unoptimized
             priority
           />
-          <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">Vytvoriť účet</h1>
-          <p className="text-sm sm:text-base text-[var(--text-secondary)]" style={{ marginTop: '4px' }}>Registrujte sa do aplikácie</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">{t('registerPage.title')}</h1>
+          <p className="text-sm sm:text-base text-[var(--text-secondary)]" style={{ marginTop: '4px' }}>{t('registerPage.subtitle')}</p>
         </div>
 
         {/* Form Card */}
@@ -139,7 +142,7 @@ export default function RegisterPage() {
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5 sm:mb-2">
-                    Meno
+                    {t('registerPage.firstName')}
                   </label>
                   <div className="relative">
                     <div
@@ -150,7 +153,7 @@ export default function RegisterPage() {
                     </div>
                     <input
                       type="text"
-                      placeholder="Ján"
+                      placeholder={t('registerPage.firstNamePlaceholder')}
                       value={firstName}
                       onChange={(e) => { setFirstName(e.target.value); clearErrors(); }}
                       autoComplete="given-name"
@@ -163,11 +166,11 @@ export default function RegisterPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5 sm:mb-2">
-                    Priezvisko
+                    {t('registerPage.lastName')}
                   </label>
                   <input
                     type="text"
-                    placeholder="Novák"
+                    placeholder={t('registerPage.lastNamePlaceholder')}
                     value={lastName}
                     onChange={(e) => { setLastName(e.target.value); clearErrors(); }}
                     autoComplete="family-name"
@@ -192,7 +195,7 @@ export default function RegisterPage() {
                   </div>
                   <input
                     type="email"
-                    placeholder="vas@email.sk"
+                    placeholder={t('emailPlaceholder')}
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); clearErrors(); }}
                     autoComplete="email"
@@ -217,7 +220,7 @@ export default function RegisterPage() {
                   </div>
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Min. 6 znakov"
+                    placeholder={t('registerPage.passwordPlaceholder')}
                     value={password}
                     onChange={(e) => { setPassword(e.target.value); clearErrors(); }}
                     autoComplete="new-password"
@@ -228,6 +231,7 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? tCommon('hidePassword') : tCommon('showPassword')}
                     className="absolute inset-y-0 right-0 flex items-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
                     style={{ paddingRight: '14px' }}
                   >
@@ -250,7 +254,7 @@ export default function RegisterPage() {
                   </div>
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Zopakujte heslo"
+                    placeholder={t('registerPage.confirmPasswordPlaceholder')}
                     value={confirmPassword}
                     onChange={(e) => { setConfirmPassword(e.target.value); clearErrors(); }}
                     autoComplete="new-password"
@@ -273,7 +277,7 @@ export default function RegisterPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>Registrujem...</span>
+                    <span>{t('registerPage.submitting')}</span>
                   </>
                 ) : (
                   t('register')
@@ -286,14 +290,18 @@ export default function RegisterPage() {
               className="text-xs sm:text-sm text-center text-[var(--text-muted)] leading-relaxed"
               style={{ marginTop: '20px' }}
             >
-              Registráciou súhlasíte s{' '}
-              <Link href="/terms" className="text-[var(--perun-blue)] hover:text-[var(--perun-blue-dark)] font-medium transition-colors">
-                podmienkami používania
-              </Link>{' '}
-              a{' '}
-              <Link href="/privacy" className="text-[var(--perun-blue)] hover:text-[var(--perun-blue-dark)] font-medium transition-colors">
-                ochranou súkromia
-              </Link>
+              {t.rich('registerPage.terms', {
+                terms: (chunks) => (
+                  <Link href="/terms" className="text-[var(--perun-blue)] hover:text-[var(--perun-blue-dark)] font-medium transition-colors">
+                    {chunks}
+                  </Link>
+                ),
+                privacy: (chunks) => (
+                  <Link href="/privacy" className="text-[var(--perun-blue)] hover:text-[var(--perun-blue-dark)] font-medium transition-colors">
+                    {chunks}
+                  </Link>
+                ),
+              })}
             </p>
           </div>
 

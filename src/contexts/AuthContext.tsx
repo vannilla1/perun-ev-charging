@@ -1,12 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { login as apiLogin, register as apiRegister, logout as apiLogout, getCurrentUser, isAuthenticated } from '@/services/api/authService';
+import { useTranslations } from 'next-intl';
+import { login as apiLogin, register as apiRegister, logout as apiLogout, getCurrentUser, isAuthenticated, AuthApiError } from '@/services/api/authService';
 import type { User } from '@/types';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  /** Prihlásenie už bolo načítané z localStorage (po hydratácii). */
+  isReady: boolean;
   isLoggedIn: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
@@ -19,13 +22,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    // Inicializácia používateľa priamo z localStorage (synchronne)
-    if (typeof window !== 'undefined') {
-      return getCurrentUser();
-    }
-    return null;
-  });
+  const t = useTranslations('auth');
+  // localStorage sa číta až po hydratácii — server ho nevidí, inak by sa
+  // HTML zo servera nezhodovalo s prvým vykreslením v prehliadači
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -47,13 +47,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const loggedInUser = await apiLogin(email, password);
       setUser(loggedInUser);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Prihlásenie zlyhalo';
+      const message = err instanceof AuthApiError ? err.message : t('loginFailed');
       setError(message);
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const register = useCallback(async (email: string, password: string, firstName: string, lastName: string) => {
     setIsLoading(true);
@@ -63,13 +63,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const newUser = await apiRegister(email, password, firstName, lastName);
       setUser(newUser);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Registrácia zlyhala';
+      const message = err instanceof AuthApiError ? err.message : t('registerFailed');
       setError(message);
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const logout = useCallback(() => {
     apiLogout();
@@ -89,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value: AuthContextType = {
     user,
     isLoading,
+    isReady: isInitialized,
     isLoggedIn: !!user,
     login,
     register,

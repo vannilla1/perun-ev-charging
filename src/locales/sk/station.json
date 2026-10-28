@@ -1,0 +1,27 @@
+{
+  "available": "Dostupná",
+  "occupied": "Obsadená",
+  "offline": "Nedostupná",
+  "maintenance": "Údržba",
+  "pricePerKwh": "€/kWh",
+  "power": "kW",
+  "distance": "km",
+  "connectors": "Konektory",
+  "openNow": "Otvorené",
+  "closed": "Zatvorené",
+  "navigate": "Navigovať",
+  "startCharging": "Spustiť nabíjanie",
+  "details": "Detail stanice",
+  "nearbyStations": "Nabíjacie stanice v okolí",
+  "searchPlaceholder": "Hľadať stanicu alebo adresu...",
+  "noStationsFound": "Žiadne stanice nenájdené",
+  "filters": "Filtre",
+  "applyFilters": "Použiť filtre",
+  "clearFilters": "Zrušiť filtre",
+  "unnamed": "Nabíjacia stanica",
+  "addressFallback": "Nabíjacia stanica ePerun",
+  "connectorSide": {
+    "left": "Ľavá",
+    "right": "Pravá"
+  }
+}

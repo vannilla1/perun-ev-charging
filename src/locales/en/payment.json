@@ -1,0 +1,72 @@
+{
+  "title": "Payment methods",
+  "addNewCard": "Add new card",
+  "empty": {
+    "title": "No payment methods",
+    "description": "Add a card for quick and easy charging payments."
+  },
+  "securityNote": "Your payment details are stored securely and encrypted. We never store your full card number.",
+  "confirmRemove": "Are you sure you want to remove this payment method?",
+  "notConfigured": "The payment system is not configured. Please contact support.",
+  "securedByStripe": "Payment details are processed securely by Stripe",
+  "card": {
+    "number": "Card number",
+    "expiry": "Expiry date",
+    "expiryPlaceholder": "MM/YY",
+    "cvc": "CVC",
+    "holderName": "Cardholder name",
+    "holderNamePlaceholder": "JOHN SMITH",
+    "validUntil": "Expires {date}",
+    "default": "Default",
+    "setDefault": "Set as default",
+    "setDefaultShort": "Set default",
+    "remove": "Remove payment method",
+    "genericBrand": "CARD"
+  },
+  "addCard": {
+    "title": "Add new card",
+    "makeDefault": "Set as default payment method",
+    "submit": "Add card",
+    "failed": "Couldn't add the card. Please try again."
+  },
+  "validation": {
+    "cardNumber": "Invalid card number",
+    "expiry": "Invalid expiry date",
+    "cvc": "Invalid CVC code",
+    "holderName": "Enter the cardholder name"
+  },
+  "stripeForm": {
+    "save": "Save card",
+    "saving": "Saving...",
+    "saveError": "Something went wrong while saving the card",
+    "saveFailed": "Couldn't save the card. Please try again.",
+    "formLoadError": "Couldn't load the form"
+  },
+  "errors": {
+    "createFailed": "Couldn't create the payment",
+    "failed": "Payment failed",
+    "notInitialized": "Payment has not been initialized"
+  },
+  "settings": {
+    "saved": "Saved payment methods",
+    "emptyDescription": "Add a payment method for quick and secure charging payments.",
+    "add": "Add payment method",
+    "creditDebitCard": "Credit/debit card",
+    "comingSoon": "Coming soon",
+    "comingSoonAlert": "{method} will be available soon",
+    "securityNote": "Your payment details are securely encrypted. We never store full card numbers on our servers.",
+    "howItWorks": {
+      "title": "How payments work",
+      "autoCharge": "When charging is finished, the amount is automatically charged to your card",
+      "certifiedProvider": "Payment details are processed by a certified provider",
+      "history": "You can find your payment history in the “History” section"
+    },
+    "addModal": {
+      "title": "Add payment card",
+      "redirect": "You will be redirected to a secure payment form.",
+      "securePayment": "Secure payment",
+      "encryption": "Your data is protected with 256-bit SSL encryption.",
+      "continue": "Continue"
+    }
+  }
+}

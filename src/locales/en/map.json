@@ -1,0 +1,17 @@
+{
+  "loadingMap": "Loading map...",
+  "loadingStations": "Loading stations",
+  "pleaseWait": "Please wait...",
+  "loadError": "Could not load stations",
+  "toggleFilters": "Station filters",
+  "onlyAvailable": "Available stations only",
+  "clear": "Clear",
+  "apply": "Apply",
+  "yourPricePerKwh": "Your price per kWh",
+  "publicPrice": "Public price: {price}",
+  "pricePerKwh": "Price per kWh",
+  "free": "Free",
+  "navigateShort": "Go",
+  "charge": "Charge",
+  "geolocationUnsupported": "Your browser does not support location services"
+}

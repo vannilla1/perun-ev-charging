@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 import { ObjectId } from 'mongodb';
 import { decodeToken } from '@/lib/services/authHelper';
 import { getDb, COLLECTIONS, UserDocument } from '@/lib/mongodb';
@@ -6,16 +7,17 @@ import { hashPassword, comparePassword } from '@/lib/services/userService';
 import { encryptSecret } from '@/lib/services/secretVault';
 
 export async function POST(request: NextRequest) {
+  const t = await getTranslations('api');
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader) {
-      return NextResponse.json({ error: 'Nie ste prihlásený' }, { status: 401 });
+      return NextResponse.json({ error: t('common.notSignedIn') }, { status: 401 });
     }
 
     const token = authHeader.replace('Bearer ', '');
     const payload = await decodeToken(token);
     if (!payload || !payload.userId) {
-      return NextResponse.json({ error: 'Neplatný token' }, { status: 401 });
+      return NextResponse.json({ error: t('common.invalidToken') }, { status: 401 });
     }
 
     const body = await request.json();
@@ -23,14 +25,14 @@ export async function POST(request: NextRequest) {
 
     if (!currentPassword || !newPassword) {
       return NextResponse.json(
-        { error: 'Aktuálne a nové heslo sú povinné' },
+        { error: t('auth.passwordsRequired') },
         { status: 400 }
       );
     }
 
     if (newPassword.length < 6) {
       return NextResponse.json(
-        { error: 'Nové heslo musí mať aspoň 6 znakov' },
+        { error: t('auth.newPasswordTooShort', { min: 6 }) },
         { status: 400 }
       );
     }
@@ -54,13 +56,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'Používateľ nebol nájdený' }, { status: 404 });
+      return NextResponse.json({ error: t('common.userNotFound') }, { status: 404 });
     }
 
     // Over aktuálne heslo (podporuje bcrypt aj legacy SHA-256)
     const isPasswordValid = await comparePassword(currentPassword, user.passwordHash);
     if (!isPasswordValid) {
-      return NextResponse.json({ error: 'Nesprávne aktuálne heslo' }, { status: 401 });
+      return NextResponse.json({ error: t('auth.wrongCurrentPassword') }, { status: 401 });
     }
 
     // Zmeň heslo v DB (vždy bcrypt). Basic auth ukladáme ZAŠIFROVANÉ (AES-GCM) —
@@ -83,12 +85,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Heslo bolo úspešne zmenené',
+      message: t('auth.passwordChanged'),
     });
   } catch (error) {
     console.error('Change password error:', error);
     return NextResponse.json(
-      { error: 'Interná chyba servera' },
+      { error: t('common.internalError') },
       { status: 500 }
     );
   }

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -164,6 +165,7 @@ export function StationMap({
   zoom = 8,
   showUserLocation = true,
 }: StationMapProps) {
+  const t = useTranslations('map');
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
@@ -187,7 +189,7 @@ export function StationMap({
   if (!mapReady) {
     return (
       <div className="w-full h-full bg-gradient-to-b from-[var(--surface)] to-[var(--surface-secondary)] flex items-center justify-center">
-        <div className="animate-pulse text-[var(--text-secondary)]">Načítavam mapu...</div>
+        <div className="animate-pulse text-[var(--text-secondary)]">{t('loadingMap')}</div>
       </div>
     );
   }

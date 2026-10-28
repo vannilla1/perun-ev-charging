@@ -1,0 +1,61 @@
+{
+  "loading": "Načítavam...",
+  "error": "Chyba",
+  "retry": "Skúsiť znova",
+  "cancel": "Zrušiť",
+  "confirm": "Potvrdiť",
+  "save": "Uložiť",
+  "delete": "Zmazať",
+  "edit": "Upraviť",
+  "back": "Späť",
+  "next": "Ďalej",
+  "close": "Zavrieť",
+  "search": "Hľadať",
+  "noResults": "Žiadne výsledky",
+  "seeAll": "Zobraziť všetko",
+  "refresh": "Obnoviť",
+  "saving": "Ukladám...",
+  "saveChanges": "Uložiť zmeny",
+  "sending": "Odosielam...",
+  "submit": "Odoslať",
+  "continue": "Pokračovať",
+  "done": "Hotovo",
+  "add": "Pridať",
+  "remove": "Odstrániť",
+  "yes": "Áno",
+  "no": "Nie",
+  "ok": "OK",
+  "or": "alebo",
+  "optional": "Nepovinné",
+  "required": "Povinné",
+  "backToHome": "Späť na úvod",
+  "showPassword": "Zobraziť heslo",
+  "hidePassword": "Skryť heslo",
+  "language": {
+    "label": "Jazyk",
+    "change": "Zmeniť jazyk"
+  },
+  "pushNotifications": {
+    "chargingStarted": {
+      "title": "Nabíjanie sa začalo ⚡",
+      "body": "Vaše vozidlo sa nabíja na stanici {station}"
+    },
+    "chargingCompleted": {
+      "title": "Nabíjanie dokončené ✅",
+      "body": "Nabitých {energy, number, ::.0} kWh za {cost, number, ::currency/EUR}",
+      "view": "Zobraziť detail",
+      "dismiss": "Zavrieť"
+    },
+    "chargingError": {
+      "title": "Chyba nabíjania ⚠️"
+    },
+    "disconnectReminder": {
+      "title": "Odpojte vozidlo 🔌",
+      "body": "Nabíjanie na stanici {station} je dokončené. Odpojte, prosím, vozidlo."
+    },
+    "lowBattery": {
+      "title": "Nízka batéria 🔋",
+      "body": "Stav batérie: {percentage} %. Odporúčame nájsť nabíjaciu stanicu."
+    }
+  }
+}

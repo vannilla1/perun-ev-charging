@@ -1,0 +1,27 @@
+{
+  "available": "Available",
+  "occupied": "Occupied",
+  "offline": "Unavailable",
+  "maintenance": "Maintenance",
+  "pricePerKwh": "€/kWh",
+  "power": "kW",
+  "distance": "km",
+  "connectors": "Connectors",
+  "openNow": "Open now",
+  "closed": "Closed",
+  "navigate": "Navigate",
+  "startCharging": "Start charging",
+  "details": "Station details",
+  "nearbyStations": "Charging stations nearby",
+  "searchPlaceholder": "Search for a station or address...",
+  "noStationsFound": "No stations found",
+  "filters": "Filters",
+  "applyFilters": "Apply filters",
+  "clearFilters": "Clear filters",
+  "unnamed": "Charging station",
+  "addressFallback": "ePerun charging station",
+  "connectorSide": {
+    "left": "Left",
+    "right": "Right"
+  }
+}

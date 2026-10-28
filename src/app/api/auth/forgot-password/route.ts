@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 
 // POST /api/auth/forgot-password
 // Odoslanie emailu pre obnovenie hesla
 export async function POST(request: NextRequest) {
+  const t = await getTranslations('api');
   try {
     const body = await request.json();
     const { email } = body;
 
     if (!email) {
       return NextResponse.json(
-        { error: 'Email je povinný' },
+        { error: t('common.emailRequired') },
         { status: 400 }
       );
     }
@@ -18,7 +20,7 @@ export async function POST(request: NextRequest) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json(
-        { error: 'Neplatná emailová adresa' },
+        { error: t('common.invalidEmail') },
         { status: 400 }
       );
     }
@@ -37,14 +39,14 @@ export async function POST(request: NextRequest) {
     // Vždy vrátime úspech (bezpečnostný pattern - neodhaľujeme či email existuje)
     return NextResponse.json({
       success: true,
-      message: 'Ak existuje účet s touto emailovou adresou, poslali sme inštrukcie na obnovenie hesla.',
+      message: t('auth.resetInstructionsSent'),
       // V produkcii by sme tu mali link na smart-me reset
       resetUrl: 'https://smart-me.com/Account/ForgotPassword',
     });
   } catch (error) {
     console.error('Forgot password error:', error);
     return NextResponse.json(
-      { error: 'Interná chyba servera' },
+      { error: t('common.internalError') },
       { status: 500 }
     );
   }

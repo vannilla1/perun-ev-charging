@@ -1,0 +1,20 @@
+{
+  "title": "Charging history",
+  "totalEnergy": "Total energy",
+  "totalCost": "Total cost",
+  "totalSessions": "Sessions",
+  "noHistory": "No history yet",
+  "noHistoryDescription": "Your charging sessions will appear here",
+  "sessionDetails": "Session details",
+  "downloadInvoice": "Download invoice",
+  "filterByDate": "Filter by date",
+  "thisMonth": "This month",
+  "lastMonth": "Last month",
+  "allTime": "All time",
+  "loading": "Loading history...",
+  "loadError": "Could not load history",
+  "duration": {
+    "hoursMinutes": "{hours} h {minutes} min",
+    "minutes": "{minutes} min"
+  }
+}

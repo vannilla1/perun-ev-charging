@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 import { getDb } from '@/lib/mongodb';
 import { getEcarupAccessToken, ECARUP_API_BASE } from '@/lib/services/ecarupAuth';
 import { getAuthenticatedUser } from '@/lib/services/authHelper';
+import { translateOr } from '@/i18n/dynamic';
 
 // Funkcia na vyhľadanie mapovania v MongoDB
 async function findStationBySerial(serial: string): Promise<string | null> {
@@ -18,13 +20,14 @@ async function findStationBySerial(serial: string): Promise<string | null> {
 // POST /api/charging/info
 // Získanie informácií o stanici bez spustenia nabíjania
 export async function POST(request: NextRequest) {
+  const t = await getTranslations('api');
   try {
     const body = await request.json();
     const { stationId, connectorId, originalUrl } = body;
 
     if (!stationId) {
       return NextResponse.json(
-        { error: 'ID stanice je povinné' },
+        { error: t('common.stationIdRequired') },
         { status: 400 }
       );
     }
@@ -34,7 +37,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         redirectUrl: originalUrl,
-        message: 'Presmerovanie na eCarUp platobný portál',
+        message: t('common.redirectToEcarup'),
       });
     }
 
@@ -42,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     if (!accessToken) {
       return NextResponse.json(
-        { error: 'Nepodarilo sa autentifikovať s API' },
+        { error: t('common.apiAuthFailed') },
         { status: 401 }
       );
     }
@@ -75,11 +78,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           redirectUrl: originalUrl,
-          message: 'Stanica nebola nájdená v našom systéme. Presmerovanie na eCarUp.',
+          message: t('charging.stationNotFoundRedirect'),
         });
       }
       return NextResponse.json(
-        { error: 'Stanica nebola nájdená' },
+        { error: t('common.stationNotFound') },
         { status: 404 }
       );
     }
@@ -93,25 +96,13 @@ export async function POST(request: NextRequest) {
 
     if (!connector) {
       return NextResponse.json(
-        { error: 'Konektor nebol nájdený' },
+        { error: t('common.connectorNotFound') },
         { status: 404 }
       );
     }
 
     // Získame stav konektora
     const connectorState = connector.state || 'UNKNOWN';
-
-    // Mapovanie stavu na slovenčinu
-    const statusMap: Record<string, string> = {
-      'AVAILABLE': 'dostupná',
-      'OCCUPIED': 'obsadená',
-      'UNAVAILABLE': 'nedostupná',
-      'FAULTED': 'porucha',
-      'CHARGING': 'prebieha nabíjanie',
-      'PREPARING': 'pripravuje sa',
-      'FINISHING': 'dokončuje sa',
-      'UNKNOWN': 'neznámy stav',
-    };
 
     // Cena — získať z hlavného stations cache
     let pricePerKwh = 0.40;  // fallback
@@ -156,7 +147,7 @@ export async function POST(request: NextRequest) {
       connectorId: connector.id,
       connectorNumber: connector.number,
       status: connectorState,
-      statusText: statusMap[connectorState] || connectorState,
+      statusText: translateOr(t, `charging.connectorStatus.${String(connectorState).toLowerCase()}`, connectorState),
       isAvailable: connectorState === 'AVAILABLE',
       station: {
         name: stationData.name,
@@ -177,7 +168,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Station info error:', error);
     return NextResponse.json(
-      { error: 'Nepodarilo sa načítať informácie o stanici' },
+      { error: t('charging.infoFailed') },
       { status: 500 }
     );
   }

@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts';
 import { Loading } from '@/components/Common';
 
@@ -11,19 +12,20 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, redirectTo = '/login' }: ProtectedRouteProps) {
+  const t = useTranslations('auth');
   const router = useRouter();
-  const { isLoggedIn, isLoading } = useAuth();
+  const { isLoggedIn, isLoading, isReady } = useAuth();
 
   useEffect(() => {
-    if (!isLoading && !isLoggedIn) {
+    if (isReady && !isLoading && !isLoggedIn) {
       router.push(redirectTo);
     }
-  }, [isLoading, isLoggedIn, router, redirectTo]);
+  }, [isReady, isLoading, isLoggedIn, router, redirectTo]);
 
-  if (isLoading) {
+  if (!isReady || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loading text="Overujem prihlásenie..." />
+        <Loading text={t('checkingSession')} />
       </div>
     );
   }

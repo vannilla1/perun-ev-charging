@@ -1,0 +1,37 @@
+{
+  "title": "Profil",
+  "personalInfo": "Osobné údaje",
+  "paymentMethods": "Platobné metódy",
+  "notifications": "Notifikácie",
+  "settings": "Nastavenia",
+  "help": "Pomoc",
+  "logout": "Odhlásiť sa",
+  "editProfile": "Upraviť profil",
+  "changePassword": "Zmeniť heslo",
+  "language": "Jazyk",
+  "darkMode": "Tmavý režim",
+  "statistics": "Štatistiky",
+  "totalCharges": "Počet nabíjaní",
+  "totalEnergyUsed": "Celková energia",
+  "totalSpent": "Celkové výdavky",
+  "memberSince": "Členom od",
+  "addPaymentMethod": "Pridať platobnú metódu",
+  "defaultPayment": "Predvolená metóda",
+  "deleteAccount": "Zmazať účet",
+  "loading": "Načítavam profil...",
+  "signInPrompt": {
+    "title": "Prihláste sa",
+    "description": "Pre zobrazenie profilu a histórie nabíjaní sa musíte prihlásiť",
+    "signIn": "Prihlásiť sa",
+    "createAccount": "Vytvoriť účet"
+  },
+  "edit": {
+    "email": "E-mail",
+    "emailReadonly": "E-mail nie je možné zmeniť",
+    "firstName": "Meno",
+    "lastName": "Priezvisko",
+    "phone": "Telefón",
+    "phonePlaceholder": "+421 900 000 000",
+    "saved": "Údaje boli uložené"
+  }
+}

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { PaymentMethod } from '@/types';
 
 interface PaymentMethodCardProps {
@@ -11,7 +12,7 @@ interface PaymentMethodCardProps {
 }
 
 // Ikony pre kartové značky
-const CardBrandIcon = ({ brand }: { brand: string }) => {
+const CardBrandIcon = ({ brand, genericLabel }: { brand: string; genericLabel: string }) => {
   switch (brand) {
     case 'visa':
       return (
@@ -45,7 +46,7 @@ const CardBrandIcon = ({ brand }: { brand: string }) => {
         <svg viewBox="0 0 48 32" className="h-8 w-12">
           <rect fill="#6b7280" width="48" height="32" rx="4" />
           <text x="24" y="20" textAnchor="middle" fill="white" fontSize="10">
-            CARD
+            {genericLabel}
           </text>
         </svg>
       );
@@ -58,6 +59,7 @@ export const PaymentMethodCard = ({
   onRemove,
   isLoading,
 }: PaymentMethodCardProps) => {
+  const t = useTranslations('payment');
   return (
     <div
       className={`
@@ -67,20 +69,20 @@ export const PaymentMethodCard = ({
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <CardBrandIcon brand={method.brand || 'unknown'} />
+          <CardBrandIcon brand={method.brand || 'unknown'} genericLabel={t('card.genericBrand')} />
           <div>
             <p className="font-medium text-[var(--text-primary)]">
               •••• •••• •••• {method.last4}
             </p>
             <p className="text-sm text-[var(--text-secondary)]">
-              Platnosť do {method.expiryMonth?.toString().padStart(2, '0')}/{method.expiryYear}
+              {t('card.validUntil', { date: `${method.expiryMonth?.toString().padStart(2, '0')}/${method.expiryYear}` })}
             </p>
           </div>
         </div>
 
         {method.isDefault && (
           <span className="px-2 py-1 bg-[var(--primary)] bg-opacity-10 text-[var(--primary)] text-xs font-medium rounded-full">
-            Predvolená
+            {t('card.default')}
           </span>
         )}
       </div>
@@ -93,13 +95,14 @@ export const PaymentMethodCard = ({
               disabled={isLoading}
               className="flex-1 py-2 px-3 text-sm font-medium text-[var(--primary)] bg-[var(--primary)] bg-opacity-10 rounded-[var(--border-radius-sm)] hover:bg-opacity-20 transition-colors disabled:opacity-50"
             >
-              Nastaviť ako predvolenú
+              {t('card.setDefault')}
             </button>
           )}
           {onRemove && (
             <button
               onClick={onRemove}
               disabled={isLoading}
+              aria-label={t('card.remove')}
               className="py-2 px-3 text-sm font-medium text-[var(--error)] bg-[var(--error)] bg-opacity-10 rounded-[var(--border-radius-sm)] hover:bg-opacity-20 transition-colors disabled:opacity-50"
             >
               <svg

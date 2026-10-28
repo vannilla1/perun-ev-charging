@@ -202,20 +202,19 @@ Spodná navigácia s 4 tabmi:
 
 ---
 
-## 🌍 Preklady (Slovenčina)
+## 🌍 Jazyky (slovenčina, angličtina)
 
-Aplikácia používa `next-intl` pre kompletné slovenské preklady.
+Aplikácia používa `next-intl`. Predvolená je slovenčina, používateľ prepína jazyk v Nastaveniach
+alebo na prihlasovacej stránke; voľba sa uloží do cookie `NEXT_LOCALE`.
 
-```tsx
-import { useTranslations } from 'next-intl';
+- Texty: `src/locales/<jazyk>/<oblasť>.json` (vzorom je `sk`), zoznam jazykov: `src/i18n/config.ts`.
+- Kontrola, že všetky jazyky majú rovnaké kľúče a premenné: `npm run check:i18n`.
 
-const t = useTranslations('station');
-
-<h1>{t('available')}</h1> // "Dostupná"
-<p>{t('pricePerKwh')}</p> // "€/kWh"
-```
-
-Všetky texty sú v `src/locales/sk.json`.
+**Nový jazyk** (napr. nemčina `de`):
+1. skopíruj `src/locales/en` do `src/locales/de` a prelož hodnoty (kľúče nemeň),
+2. v `src/i18n/config.ts` pridaj `'de'` do `locales`, názov do `localeNames` a tag do `intlLocale`,
+3. v `src/i18n/request.ts` pridaj loader `de: () => import('../locales/de')`,
+4. `npm run check:i18n` a `npx tsc --noEmit` ohlásia všetko, čo chýba.
 
 ---
 

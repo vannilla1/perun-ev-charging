@@ -1,14 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { AppLayout, PageHeader } from '@/components/Layout';
 import { LockIcon, EyeIcon, EyeOffIcon, CheckIcon } from '@/components/Common';
 import { useAuth } from '@/contexts';
 
 export default function ChangePasswordPage() {
+  const t = useTranslations('settings.changePassword');
+  const tCommon = useTranslations('common');
   const router = useRouter();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, isReady } = useAuth();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -19,8 +22,11 @@ export default function ChangePasswordPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Presmerovanie ak nie je prihlásený
+  useEffect(() => {
+    if (isReady && !isLoggedIn) router.push('/login');
+  }, [isReady, isLoggedIn, router]);
+
   if (!isLoggedIn) {
-    router.push('/login');
     return null;
   }
 
@@ -30,27 +36,27 @@ export default function ChangePasswordPage() {
 
     // Validácia
     if (!currentPassword) {
-      setError('Zadajte aktuálne heslo');
+      setError(t('validation.currentRequired'));
       return;
     }
 
     if (!newPassword) {
-      setError('Zadajte nové heslo');
+      setError(t('validation.newRequired'));
       return;
     }
 
     if (newPassword.length < 6) {
-      setError('Nové heslo musí mať aspoň 6 znakov');
+      setError(t('validation.newTooShort'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Nové heslá sa nezhodujú');
+      setError(t('validation.mismatch'));
       return;
     }
 
     if (currentPassword === newPassword) {
-      setError('Nové heslo musí byť odlišné od aktuálneho');
+      setError(t('validation.sameAsCurrent'));
       return;
     }
 
@@ -73,12 +79,16 @@ export default function ChangePasswordPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Nepodarilo sa zmeniť heslo');
+        throw new Error(data.error || t('failed'));
       }
 
       setIsSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Nepodarilo sa zmeniť heslo');
+      setError(
+        err instanceof Error && !(err instanceof TypeError) && !(err instanceof SyntaxError)
+          ? err.message
+          : t('failed')
+      );
     } finally {
       setIsLoading(false);
     }
@@ -87,7 +97,7 @@ export default function ChangePasswordPage() {
   if (isSuccess) {
     return (
       <AppLayout
-        header={<PageHeader title="Zmena hesla" showBack />}
+        header={<PageHeader title={t('title')} showBack />}
       >
         <div
           className="max-w-lg mx-auto"
@@ -101,16 +111,16 @@ export default function ChangePasswordPage() {
               <CheckIcon />
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]" style={{ marginBottom: '12px' }}>
-              Heslo zmenené
+              {t('successTitle')}
             </h2>
             <p className="text-sm sm:text-base text-[var(--text-secondary)]" style={{ marginBottom: '32px' }}>
-              Vaše heslo bolo úspešne zmenené.
+              {t('successBody')}
             </p>
             <button
               onClick={() => router.push('/profile')}
               className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-[var(--perun-blue)] to-[var(--perun-blue-dark)] text-white rounded-xl sm:rounded-2xl text-sm sm:text-base font-semibold shadow-lg hover:shadow-xl transition-all"
             >
-              Späť na profil
+              {t('backToProfile')}
             </button>
           </div>
         </div>
@@ -120,7 +130,7 @@ export default function ChangePasswordPage() {
 
   return (
     <AppLayout
-      header={<PageHeader title="Zmena hesla" showBack />}
+      header={<PageHeader title={t('title')} showBack />}
     >
       <div
         className="max-w-lg mx-auto"
@@ -140,7 +150,7 @@ export default function ChangePasswordPage() {
             {/* Current Password */}
             <div>
               <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5 sm:mb-2">
-                Aktuálne heslo
+                {t('currentPassword')}
               </label>
               <div className="relative">
                 <div
@@ -168,7 +178,7 @@ export default function ChangePasswordPage() {
             {/* New Password */}
             <div>
               <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5 sm:mb-2">
-                Nové heslo
+                {t('newPassword')}
               </label>
               <div className="relative">
                 <div
@@ -179,7 +189,7 @@ export default function ChangePasswordPage() {
                 </div>
                 <input
                   type={showPasswords ? 'text' : 'password'}
-                  placeholder="Min. 6 znakov"
+                  placeholder={t('newPasswordPlaceholder')}
                   value={newPassword}
                   onChange={(e) => {
                     setNewPassword(e.target.value);
@@ -193,6 +203,7 @@ export default function ChangePasswordPage() {
                 <button
                   type="button"
                   onClick={() => setShowPasswords(!showPasswords)}
+                  aria-label={showPasswords ? tCommon('hidePassword') : tCommon('showPassword')}
                   className="absolute inset-y-0 right-0 flex items-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
                   style={{ paddingRight: '14px' }}
                 >
@@ -204,7 +215,7 @@ export default function ChangePasswordPage() {
             {/* Confirm Password */}
             <div>
               <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5 sm:mb-2">
-                Potvrďte nové heslo
+                {t('confirmNewPassword')}
               </label>
               <div className="relative">
                 <div
@@ -215,7 +226,7 @@ export default function ChangePasswordPage() {
                 </div>
                 <input
                   type={showPasswords ? 'text' : 'password'}
-                  placeholder="Zopakujte heslo"
+                  placeholder={t('confirmPlaceholder')}
                   value={confirmPassword}
                   onChange={(e) => {
                     setConfirmPassword(e.target.value);
@@ -242,10 +253,10 @@ export default function ChangePasswordPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Mením heslo...</span>
+                  <span>{t('submitting')}</span>
                 </>
               ) : (
-                'Zmeniť heslo'
+                t('submit')
               )}
             </button>
           </form>
@@ -256,7 +267,7 @@ export default function ChangePasswordPage() {
           className="text-center text-sm text-[var(--text-muted)]"
           style={{ marginTop: '24px' }}
         >
-          Heslo musí mať aspoň 6 znakov a odporúčame použiť kombináciu písmen, čísiel a špeciálnych znakov.
+          {t('hint')}
         </p>
       </div>
     </AppLayout>

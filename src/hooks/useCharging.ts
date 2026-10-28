@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import {
   startCharging,
   stopCharging,
   getSessionStatus,
   parseStationQRCode,
-  formatDuration,
+  splitDuration,
   getStationInfo,
+  UserFacingError,
 } from '@/services/api/chargingService';
 import { useAuth } from '@/contexts';
 
@@ -96,12 +98,16 @@ interface UseChargingResult {
   startGuestCharging: () => Promise<void>;
   stopSession: () => void;
   reset: () => void;
-  formatDuration: typeof formatDuration;
+  formatDuration: (seconds: number) => string;
 }
 
 const DEFAULT_PREAUTH_AMOUNT = 30; // EUR
 
+const messageOr = (err: unknown, fallback: string) =>
+  err instanceof UserFacingError ? err.message : fallback;
+
 export function useCharging(): UseChargingResult {
+  const t = useTranslations('charging');
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [state, setState] = useState<ChargingState>('idle');
@@ -130,7 +136,7 @@ export function useCharging(): UseChargingResult {
       setStationInfo({
         stationId: data.stationId || '',
         connectorId: data.connectorId || '',
-        name: data.station?.name || 'Neznáma stanica',
+        name: data.station?.name || t('unknownStation'),
         address: data.station?.address || '',
         maxPower: data.station?.maxPower || null,
         plugType: data.station?.plugType || 'Type 2',
@@ -146,7 +152,7 @@ export function useCharging(): UseChargingResult {
     },
     onError: (err) => {
       setState('error');
-      setError(err instanceof Error ? err.message : 'Nepodarilo sa načítať informácie o stanici');
+      setError(messageOr(err, t('errors.stationInfoFailed')));
     },
   });
 
@@ -154,7 +160,7 @@ export function useCharging(): UseChargingResult {
   const stationConnectorsMutation = useMutation({
     mutationFn: async (stationId: string) => {
       const res = await fetch(`/api/charging/station-connectors?stationId=${stationId}`);
-      if (!res.ok) throw new Error('Nepodarilo sa načítať konektory');
+      if (!res.ok) throw new UserFacingError(t('errors.connectorsFailed'));
       return res.json();
     },
     onSuccess: (data) => {
@@ -169,7 +175,7 @@ export function useCharging(): UseChargingResult {
     },
     onError: (err) => {
       setState('error');
-      setError(err instanceof Error ? err.message : 'Nepodarilo sa načítať stanicu');
+      setError(messageOr(err, t('errors.stationFailed')));
     },
   });
 
@@ -192,7 +198,7 @@ export function useCharging(): UseChargingResult {
     },
     onError: (err) => {
       setState('error');
-      setError(err instanceof Error ? err.message : 'Nepodarilo sa spustiť nabíjanie');
+      setError(messageOr(err, t('errors.startFailed')));
     },
   });
 
@@ -211,7 +217,7 @@ export function useCharging(): UseChargingResult {
     },
     onError: (err) => {
       setState('error');
-      setError(err instanceof Error ? err.message : 'Nepodarilo sa zastaviť nabíjanie');
+      setError(messageOr(err, t('errors.stopFailed')));
     },
   });
 
@@ -232,7 +238,7 @@ export function useCharging(): UseChargingResult {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Nepodarilo sa vytvoriť predautorizáciu');
+        throw data.error ? new UserFacingError(data.error) : new Error('preauth_failed');
       }
 
       return response.json();
@@ -248,7 +254,7 @@ export function useCharging(): UseChargingResult {
     },
     onError: (err) => {
       setState('error');
-      setError(err instanceof Error ? err.message : 'Nepodarilo sa vytvoriť predautorizáciu');
+      setError(messageOr(err, t('errors.preAuthFailed')));
     },
   });
 
@@ -256,7 +262,7 @@ export function useCharging(): UseChargingResult {
   const guestStartMutation = useMutation({
     mutationFn: async () => {
       if (!stationInfo || !guestPaymentInfo) {
-        throw new Error('Chýbajú údaje pre spustenie nabíjania');
+        throw new UserFacingError(t('errors.missingStartData'));
       }
 
       const response = await fetch('/api/charging/start', {
@@ -273,7 +279,7 @@ export function useCharging(): UseChargingResult {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Nepodarilo sa spustiť nabíjanie');
+        throw data.error ? new UserFacingError(data.error) : new Error('start_failed');
       }
 
       return response.json();
@@ -304,7 +310,7 @@ export function useCharging(): UseChargingResult {
         }
       }
       setState('error');
-      setError(err instanceof Error ? err.message : 'Nepodarilo sa spustiť nabíjanie');
+      setError(messageOr(err, t('errors.startFailed')));
     },
   });
 
@@ -373,10 +379,10 @@ export function useCharging(): UseChargingResult {
     } else {
       console.error('Failed to parse QR code:', data);
       const truncatedData = data.length > 100 ? data.substring(0, 100) + '...' : data;
-      setError(`Neplatný QR kód. Data: "${truncatedData}"`);
+      setError(t('errors.invalidQr', { data: truncatedData }));
       setState('error');
     }
-  }, [stationInfoMutation]);
+  }, [stationInfoMutation, t]);
 
   const handleManualCode = useCallback((code: string) => {
     if (code.length >= 4) {
@@ -388,9 +394,9 @@ export function useCharging(): UseChargingResult {
         });
       }, 1000);
     } else {
-      setError('Kód musí mať aspoň 4 znaky');
+      setError(t('errors.codeTooShort'));
     }
-  }, [stationInfoMutation]);
+  }, [stationInfoMutation, t]);
 
   // Priame načítanie stanice z mapy (bez QR)
   const loadStation = useCallback((stationId: string) => {
@@ -461,6 +467,13 @@ export function useCharging(): UseChargingResult {
       stopMutation.mutate(sessionId);
     }
   }, [sessionId, stopMutation]);
+
+  const formatDuration = useCallback((totalSeconds: number) => {
+    const { hours, minutes, seconds } = splitDuration(totalSeconds);
+    if (hours > 0) return t('durationValue.hoursMinutes', { hours, minutes });
+    if (minutes > 0) return t('durationValue.minutesSeconds', { minutes, seconds });
+    return t('durationValue.seconds', { seconds });
+  }, [t]);
 
   const reset = useCallback(() => {
     setState('idle');
