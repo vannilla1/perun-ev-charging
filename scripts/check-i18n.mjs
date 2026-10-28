@@ -1,6 +1,15 @@
 // Overí, že každý jazyk v src/locales/ má presne tie isté kľúče a premenné ({name}) ako slovenčina.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { createRequire } from 'node:module';
+
+// Parser ICU správ prichádza s next-intl; bez neho sa preskočí len kontrola syntaxe.
+let IntlMessageFormat = null;
+try {
+  IntlMessageFormat = createRequire(import.meta.url)('intl-messageformat').IntlMessageFormat;
+} catch {
+  console.warn('intl-messageformat nenájdený — kontrola syntaxe ICU preskočená');
+}
 
 const root = new URL('../src/locales/', import.meta.url).pathname;
 const base = 'sk';
@@ -44,6 +53,13 @@ for (const loc of locales) {
     const b = load(loc, f);
     for (const [k, v] of Object.entries(b)) {
       if (typeof v !== 'string' || v.trim() === '') errors.push(`${loc}/${f}: ${k} je prázdny`);
+      else if (IntlMessageFormat) {
+        try {
+          new IntlMessageFormat(v, loc);
+        } catch (e) {
+          errors.push(`${loc}/${f}: ${k} má chybnú syntax ICU (${e.message})`);
+        }
+      }
     }
     if (loc === base) continue;
     for (const k of Object.keys(a)) if (!(k in b)) errors.push(`${loc}/${f}: chýba ${k}`);
