@@ -21,13 +21,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const t = useTranslations('auth');
-  const [user, setUser] = useState<User | null>(() => {
-    // Inicializácia používateľa priamo z localStorage (synchronne)
-    if (typeof window !== 'undefined') {
-      return getCurrentUser();
-    }
-    return null;
-  });
+  // localStorage sa číta až po hydratácii — server ho nevidí, inak by sa
+  // HTML zo servera nezhodovalo s prvým vykreslením v prehliadači
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -90,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value: AuthContextType = {
     user,
-    isLoading,
+    isLoading: isLoading || !isInitialized,
     isLoggedIn: !!user,
     login,
     register,

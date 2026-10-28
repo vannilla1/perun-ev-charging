@@ -98,7 +98,7 @@ export default function PaymentMethodsPage() {
   const t = useTranslations('payment');
   const tCommon = useTranslations('common');
   const router = useRouter();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, isLoading: authLoading } = useAuth();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(mockPaymentMethods);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -122,10 +122,10 @@ export default function PaymentMethodsPage() {
 
   // Redirect ak nie je prihlásený
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!authLoading && !isLoggedIn) {
       router.push('/login');
     }
-  }, [isLoggedIn, router]);
+  }, [authLoading, isLoggedIn, router]);
 
   const getCardIcon = (type: PaymentMethod['type']) => {
     switch (type.toLowerCase()) {
