@@ -91,9 +91,8 @@ export interface StatusNotificationRequest {
   vendorErrorCode?: string;
 }
 
-export interface StatusNotificationResponse {
-  // Empty response
-}
+// Empty response
+export type StatusNotificationResponse = Record<string, never>;
 
 // MeterValues
 export interface MeterValuesRequest {
@@ -102,9 +101,8 @@ export interface MeterValuesRequest {
   meterValue: MeterValue[];
 }
 
-export interface MeterValuesResponse {
-  // Empty response
-}
+// Empty response
+export type MeterValuesResponse = Record<string, never>;
 
 export interface MeterValue {
   timestamp: string;
@@ -122,9 +120,8 @@ export interface SampledValue {
 }
 
 // Heartbeat
-export interface HeartbeatRequest {
-  // Empty request
-}
+// Empty request
+export type HeartbeatRequest = Record<string, never>;
 
 export interface HeartbeatResponse {
   currentTime: string;

@@ -325,6 +325,7 @@ export function useCharging(): UseChargingResult {
   // Aktualizácia štatistík z pollingu
   useEffect(() => {
     if (sessionStatus && state === 'charging') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- štatistiky preberáme z pollingu servera
       setStats({
         power: sessionStatus.currentPower,
         energy: sessionStatus.energyDelivered,

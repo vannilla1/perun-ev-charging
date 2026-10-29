@@ -34,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isInitialized) {
       const currentUser = getCurrentUser();
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage je dostupný až po hydratácii (inak nezhoda servera a prehliadača)
       setUser(currentUser);
       setIsInitialized(true);
     }

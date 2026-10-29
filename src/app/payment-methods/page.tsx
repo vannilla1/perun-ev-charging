@@ -60,7 +60,7 @@ export default function PaymentMethodsPage() {
     loadPaymentMethods();
   }, []);
 
-  const loadPaymentMethods = async () => {
+  async function loadPaymentMethods() {
     try {
       const methods = await paymentService.getPaymentMethods();
       setPaymentMethods(methods);
@@ -69,7 +69,7 @@ export default function PaymentMethodsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   const handleSetDefault = async (methodId: string) => {
     setActionLoading(methodId);

@@ -146,6 +146,7 @@ export function QRScanner({ onScan, onError, onClose }: QRScannerProps) {
 
   useEffect(() => {
     // Štartujeme so zadnou kamerou (environment)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- kamera sa spúšťa až po pripojení komponentu
     startScanner('environment');
 
     return () => {
