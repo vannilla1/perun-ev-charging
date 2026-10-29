@@ -35,7 +35,7 @@ export default function QRMappingsAdminPage() {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  async function loadData() {
     setLoading(true);
     try {
       // Načítať mapovania
@@ -53,7 +53,7 @@ export default function QRMappingsAdminPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

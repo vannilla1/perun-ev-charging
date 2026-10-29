@@ -170,6 +170,7 @@ export function StationMap({
   const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mapa (Leaflet) sa smie vykresliť až v prehliadači
     setMapReady(true);
 
     if (showUserLocation && navigator.geolocation) {
